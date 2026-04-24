@@ -1,18 +1,22 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
-import Loader from '../components/common/Loader.jsx'
 import useAuth from '../hooks/useAuth.js'
 
 function ProtectedRoute() {
   const location = useLocation()
-  const { isAuthenticated, isBootstrapping } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
 
-  if (isBootstrapping) {
-    return <Loader label="Restaurando sesion..." fullscreen />
+  if (isLoading) {
+    return (
+      <div className="route-loader">
+        <span />
+        <p>Cargando sesión...</p>
+      </div>
+    )
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   return <Outlet />

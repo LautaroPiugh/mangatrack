@@ -1,24 +1,35 @@
 import { Outlet, ScrollRestoration } from 'react-router-dom'
+import { useState } from 'react'
 
 import ToastViewport from '../common/ToastViewport.jsx'
-import Navbar from './Navbar.jsx'
+import Header from './Header.jsx'
+import Sidebar from './Sidebar.jsx'
+import useAuth from '../../hooks/useAuth.js'
 
 function RootLayout() {
-  return (
-    <div className="app-shell">
-      <div className="background-orb background-orb-a" />
-      <div className="background-orb background-orb-b" />
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const { isAuthenticated, logout, user } = useAuth()
 
-      <Navbar />
+  return (
+    <div className={`app-shell ${isCollapsed ? 'app-shell-collapsed' : ''}`}>
+      <Sidebar
+        isCollapsed={isCollapsed}
+        onToggle={() => setIsCollapsed((current) => !current)}
+        isAuthenticated={isAuthenticated}
+        onLogout={logout}
+      />
+      <Header
+        isAuthenticated={isAuthenticated}
+        user={user}
+        onLogout={logout}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
 
       <main className="page-container">
-        <Outlet />
+        <Outlet context={{ searchQuery, setSearchQuery }} />
       </main>
-
-      <footer className="site-footer">
-        <span>MangaTrack</span>
-        <span>Proyecto final full-stack con React, Express y MongoDB.</span>
-      </footer>
 
       <ToastViewport />
       <ScrollRestoration />

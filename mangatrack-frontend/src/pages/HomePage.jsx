@@ -1,138 +1,94 @@
-import { Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-
-import mangaApi from '../api/mangaApi.js'
-import reviewApi from '../api/reviewApi.js'
-import { getApiErrorMessage } from '../api/axiosClient.js'
-import Alert from '../components/common/Alert.jsx'
-import EmptyState from '../components/common/EmptyState.jsx'
-import Loader from '../components/common/Loader.jsx'
 import MangaCard from '../components/manga/MangaCard.jsx'
 import ReviewCard from '../components/review/ReviewCard.jsx'
-import StatCard from '../components/common/StatCard.jsx'
+
+const trendingMangas = [
+  { id: 1, title: 'One Piece', cover: 'https://images.unsplash.com/photo-1569701813229-33284b643e3c?w=500', rating: 4.8, votes: 15234 },
+  { id: 2, title: 'Attack on Titan', cover: 'https://images.unsplash.com/photo-1666153184621-bc6445e3568d?w=500', rating: 4.9, votes: 18492 },
+  { id: 3, title: 'Death Note', cover: 'https://images.unsplash.com/photo-1760113671986-63ccb46ae202?w=500', rating: 4.7, votes: 12847 },
+  { id: 4, title: 'Naruto Shippuden', cover: 'https://images.unsplash.com/photo-1673047233297-41890c998920?w=500', rating: 4.6, votes: 14523 },
+  { id: 5, title: 'My Hero Academia', cover: 'https://images.unsplash.com/photo-1569701813229-33284b643e3c?w=500', rating: 4.5, votes: 11234 },
+  { id: 6, title: 'Demon Slayer', cover: 'https://images.unsplash.com/photo-1666153184621-bc6445e3568d?w=500', rating: 4.8, votes: 16789 },
+]
+
+const recentReviews = [
+  {
+    id: 1,
+    user: 'Kenji',
+    manga: 'Jujutsu Kaisen',
+    rating: 5,
+    comment: 'Una obra maestra del shonen moderno. Los combates están increíblemente coreografiados.',
+    date: 'Hace 2 horas',
+  },
+  {
+    id: 2,
+    user: 'Sakura',
+    manga: 'Chainsaw Man',
+    rating: 4,
+    comment: 'Historia única y personajes memorables. El arte es brutal en el mejor sentido.',
+    date: 'Hace 5 horas',
+  },
+  {
+    id: 3,
+    user: 'Yuki',
+    manga: 'Berserk',
+    rating: 5,
+    comment: 'Simplemente legendario. Una experiencia que todo amante del manga debe vivir.',
+    date: 'Hace 1 día',
+  },
+]
+
+const stats = [
+  { label: 'Mangas leídos', value: '47', icon: '本', color: 'green' },
+  { label: 'Reseñas escritas', value: '23', icon: '★', color: 'orange' },
+  { label: 'Pendientes', value: '12', icon: '◷', color: 'blue' },
+  { label: 'Horas de lectura', value: '156', icon: '↗', color: 'purple' },
+]
 
 function HomePage() {
-  const [featuredMangas, setFeaturedMangas] = useState([])
-  const [recentReviews, setRecentReviews] = useState([])
-  const [stats, setStats] = useState({ mangas: 0, reviews: 0 })
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    const loadHomeData = async () => {
-      try {
-        setIsLoading(true)
-        setError('')
-
-        const [mangaResponse, reviewResponse] = await Promise.all([
-          mangaApi.list({ limit: 4 }),
-          reviewApi.list({ limit: 3 }),
-        ])
-
-        setFeaturedMangas(mangaResponse.data)
-        setRecentReviews(reviewResponse.data)
-        setStats({
-          mangas: mangaResponse.meta?.total || mangaResponse.data.length,
-          reviews: reviewResponse.meta?.total || reviewResponse.data.length,
-        })
-      } catch (requestError) {
-        setError(getApiErrorMessage(requestError, 'No se pudo cargar la portada inicial.'))
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadHomeData()
-  }, [])
-
   return (
-    <div className="stack-xl">
-      <section className="hero-panel">
-        <div className="hero-copy">
-          <span className="page-eyebrow">Proyecto Final</span>
-          <h1>Tu biblioteca de mangas, resenas y progreso de lectura.</h1>
-          <p>
-            MangaTrack combina catalogo, seguimiento personal y resenas en una interfaz sobria,
-            clara y lista para seguir creciendo como producto real.
-          </p>
-
-          <div className="hero-actions">
-            <Link to="/mangas" className="button button-primary">
-              Explorar catalogo
-            </Link>
-            <Link to="/reviews" className="button button-secondary">
-              Ver reviews
-            </Link>
-          </div>
-        </div>
-
-        <div className="hero-stats">
-          <StatCard label="Mangas cargados" value={stats.mangas} accent="amber" />
-          <StatCard label="Reviews publicadas" value={stats.reviews} accent="blue" />
-          <StatCard
-            label="Enfoque"
-            value="Full-stack"
-            description="Seguimiento personal, catalogo editable y autenticacion con verificacion por email."
-            accent="slate"
-          />
+    <div className="figma-page">
+      <section className="dashboard-hero">
+        <div className="dashboard-hero-inner">
+          <h1>Descubrí, valorá y organizá tus mangas favoritos.</h1>
+          <p>Seguí tus lecturas, guardá pendientes y compartí reseñas breves.</p>
         </div>
       </section>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <div className="figma-content">
+        <section className="stats-grid">
+          {stats.map((stat) => (
+            <article key={stat.label} className={`stat-card stat-card-${stat.color}`}>
+              <span className="stat-icon">{stat.icon}</span>
+              <strong>{stat.value}</strong>
+              <p>{stat.label}</p>
+            </article>
+          ))}
+        </section>
 
-      <section className="content-section">
-        <div className="section-heading">
-          <div>
-            <span className="page-eyebrow">Catalogo</span>
-            <h2>Mangas destacados</h2>
+        <section className="figma-section">
+          <div className="section-title">
+            <span>↗</span>
+            <h2>Tendencias</h2>
           </div>
-          <Link to="/mangas" className="button button-ghost">
-            Ver todos
-          </Link>
-        </div>
-
-        {isLoading ? (
-          <Loader label="Cargando mangas destacados..." />
-        ) : featuredMangas.length > 0 ? (
-          <div className="card-grid card-grid-mangas">
-            {featuredMangas.map((manga) => (
-              <MangaCard key={manga._id} manga={manga} />
+          <div className="manga-grid">
+            {trendingMangas.map((manga) => (
+              <MangaCard key={manga.id} manga={manga} />
             ))}
           </div>
-        ) : (
-          <EmptyState
-            title="Todavia no hay mangas cargados"
-            description="Cuando se creen mangas desde la aplicacion, apareceran aqui para explorar el catalogo."
-          />
-        )}
-      </section>
+        </section>
 
-      <section className="content-section">
-        <div className="section-heading">
-          <div>
-            <span className="page-eyebrow">Actividad reciente</span>
-            <h2>Ultimas reviews</h2>
+        <section className="figma-section">
+          <div className="section-title">
+            <span>★</span>
+            <h2>Reseñas recientes</h2>
           </div>
-          <Link to="/reviews" className="button button-ghost">
-            Ir al listado
-          </Link>
-        </div>
-
-        {isLoading ? (
-          <Loader label="Cargando reviews recientes..." />
-        ) : recentReviews.length > 0 ? (
-          <div className="stack-md">
+          <div className="review-list">
             {recentReviews.map((review) => (
-              <ReviewCard key={review._id} review={review} compact />
+              <ReviewCard key={review.id} review={review} />
             ))}
           </div>
-        ) : (
-          <EmptyState
-            title="No hay reviews recientes"
-            description="Las reseñas publicadas por los usuarios apareceran en esta seccion."
-          />
-        )}
-      </section>
+        </section>
+      </div>
     </div>
   )
 }

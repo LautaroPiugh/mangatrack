@@ -1,150 +1,73 @@
-import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
 
-import mangaApi from '../../api/mangaApi.js'
-import { getApiErrorMessage } from '../../api/axiosClient.js'
-import Alert from '../../components/common/Alert.jsx'
-import EmptyState from '../../components/common/EmptyState.jsx'
-import Field from '../../components/common/Field.jsx'
-import Loader from '../../components/common/Loader.jsx'
-import PageHeader from '../../components/common/PageHeader.jsx'
-import Pagination from '../../components/common/Pagination.jsx'
 import MangaCard from '../../components/manga/MangaCard.jsx'
-import useAuth from '../../hooks/useAuth.js'
 
-const buildSearchParams = (filters) => {
-  const nextSearchParams = new URLSearchParams()
+const mangas = [
+  { id: 1, title: 'One Piece', cover: 'https://images.unsplash.com/photo-1569701813229-33284b643e3c?w=500', rating: 4.8, votes: 15234 },
+  { id: 2, title: 'Attack on Titan', cover: 'https://images.unsplash.com/photo-1666153184621-bc6445e3568d?w=500', rating: 4.9, votes: 18492 },
+  { id: 3, title: 'Death Note', cover: 'https://images.unsplash.com/photo-1760113671986-63ccb46ae202?w=500', rating: 4.7, votes: 12847 },
+  { id: 4, title: 'Naruto Shippuden', cover: 'https://images.unsplash.com/photo-1673047233297-41890c998920?w=500', rating: 4.6, votes: 14523 },
+  { id: 5, title: 'My Hero Academia', cover: 'https://images.unsplash.com/photo-1569701813229-33284b643e3c?w=500', rating: 4.5, votes: 11234 },
+  { id: 6, title: 'Demon Slayer', cover: 'https://images.unsplash.com/photo-1666153184621-bc6445e3568d?w=500', rating: 4.8, votes: 16789 },
+  { id: 7, title: 'Jujutsu Kaisen', cover: 'https://images.unsplash.com/photo-1760113671986-63ccb46ae202?w=500', rating: 4.7, votes: 13567 },
+  { id: 8, title: 'Tokyo Ghoul', cover: 'https://images.unsplash.com/photo-1673047233297-41890c998920?w=500', rating: 4.5, votes: 10234 },
+  { id: 9, title: 'Fullmetal Alchemist', cover: 'https://images.unsplash.com/photo-1569701813229-33284b643e3c?w=500', rating: 4.9, votes: 19456 },
+  { id: 10, title: 'Hunter x Hunter', cover: 'https://images.unsplash.com/photo-1666153184621-bc6445e3568d?w=500', rating: 4.8, votes: 17234 },
+  { id: 11, title: 'Bleach', cover: 'https://images.unsplash.com/photo-1760113671986-63ccb46ae202?w=500', rating: 4.6, votes: 15123 },
+  { id: 12, title: 'Berserk', cover: 'https://images.unsplash.com/photo-1673047233297-41890c998920?w=500', rating: 4.9, votes: 20567 },
+]
 
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value !== '' && value !== null && value !== undefined) {
-      nextSearchParams.set(key, String(value))
-    }
-  })
-
-  return nextSearchParams
-}
+const filters = ['Todos', 'Favoritos', 'Pendientes', 'Leyendo', 'Completados']
 
 function MangasPage() {
-  const { isAuthenticated } = useAuth()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [filters, setFilters] = useState({
-    search: searchParams.get('search') || '',
-    genre: searchParams.get('genre') || '',
-  })
-  const [mangas, setMangas] = useState([])
-  const [meta, setMeta] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { searchQuery = '' } = useOutletContext() || {}
+  const [filter, setFilter] = useState('Todos')
 
-  useEffect(() => {
-    const loadMangas = async () => {
-      try {
-        setIsLoading(true)
-        setError('')
-
-        const response = await mangaApi.list({
-          search: searchParams.get('search') || undefined,
-          genre: searchParams.get('genre') || undefined,
-          page: searchParams.get('page') || 1,
-        })
-
-        setMangas(response.data)
-        setMeta(response.meta)
-      } catch (requestError) {
-        setError(getApiErrorMessage(requestError, 'No se pudo cargar el catalogo de mangas.'))
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadMangas()
-  }, [searchParams])
-
-  const handleFilterChange = (event) => {
-    const { name, value } = event.target
-    setFilters((current) => ({ ...current, [name]: value }))
-  }
-
-  const handleFilterSubmit = (event) => {
-    event.preventDefault()
-    setSearchParams(buildSearchParams({
-      search: filters.search,
-      genre: filters.genre,
-      page: 1,
-    }))
-  }
-
-  const handlePageChange = (page) => {
-    setSearchParams(buildSearchParams({
-      search: searchParams.get('search') || '',
-      genre: searchParams.get('genre') || '',
-      page,
-    }))
-  }
+  const filteredMangas = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return mangas
+    return mangas.filter((manga) => manga.title.toLowerCase().includes(query))
+  }, [searchQuery])
 
   return (
-    <div className="stack-lg">
-      <PageHeader
-        eyebrow="Catalogo"
-        title="Explorar mangas"
-        description="Busca por titulo, autor o genero y navega un catalogo editable desde la aplicacion."
-        actions={isAuthenticated ? (
-          <Link to="/mangas/new" className="button button-primary">
-            Cargar manga
-          </Link>
-        ) : null}
-      />
+    <div className="figma-page">
+      <section className="list-header">
+        <div>
+          <h1>Explorar Mangas</h1>
+          <p>Buscá títulos, marcá favoritos y armá tu lista de pendientes.</p>
+        </div>
 
-      <section className="panel">
-        <form className="filter-grid" onSubmit={handleFilterSubmit}>
-          <Field
-            label="Busqueda"
-            name="search"
-            value={filters.search}
-            onChange={handleFilterChange}
-            placeholder="Ej. Berserk, Urasawa, Seinen"
-          />
-          <Field
-            label="Genero"
-            name="genre"
-            value={filters.genre}
-            onChange={handleFilterChange}
-            placeholder="Ej. Drama"
-          />
-
-          <div className="field-actions">
-            <button type="submit" className="button button-primary">
-              Filtrar
+        <div className="filter-row">
+          <span className="filter-icon">⌁</span>
+          {filters.map((item) => (
+            <button
+              key={item}
+              type="button"
+              className={filter === item ? 'filter-pill filter-pill-active' : 'filter-pill'}
+              onClick={() => setFilter(item)}
+            >
+              {item}
             </button>
-          </div>
-        </form>
+          ))}
+        </div>
       </section>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
-
-      {isLoading ? (
-        <Loader label="Cargando catalogo..." />
-      ) : mangas.length > 0 ? (
-        <>
-          <div className="card-grid card-grid-mangas">
-            {mangas.map((manga) => (
-              <MangaCard key={manga._id} manga={manga} />
+      <div className="figma-content">
+        {filteredMangas.length ? (
+          <div className="manga-grid manga-grid-wide">
+            {filteredMangas.map((manga) => (
+              <MangaCard key={manga.id} manga={manga} />
             ))}
           </div>
-
-          <Pagination meta={meta} onPageChange={handlePageChange} />
-        </>
-      ) : (
-        <EmptyState
-          title="No hay mangas para mostrar"
-          description="Prueba ajustando los filtros o crea un nuevo manga para iniciar el catalogo."
-          action={isAuthenticated ? (
-            <Link to="/mangas/new" className="button button-primary">
-              Crear manga
-            </Link>
-          ) : null}
-        />
-      )}
+        ) : (
+          <div className="empty-state">
+            <span className="empty-state-icon">本</span>
+            <h2>No hay mangas todavía</h2>
+            <p>Agregá el primero para empezar.</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

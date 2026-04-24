@@ -1,37 +1,75 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
 
-import { getInitials } from '../../utils/formatters.js'
+import ImageWithFallback from '../common/ImageWithFallback.jsx'
 
 function MangaCard({ manga }) {
-  const shortDescription = manga.description.length > 160
-    ? `${manga.description.slice(0, 157)}...`
-    : manga.description
+  const [isFavorite, setIsFavorite] = useState(false)
+  const [isPending, setIsPending] = useState(false)
+  const [userRating, setUserRating] = useState(0)
+  const [hoverRating, setHoverRating] = useState(0)
+
+  const rating = manga.rating ?? manga.reviewSummary?.averageRating ?? 0
+  const votes = manga.votes ?? manga.reviewSummary?.totalReviews ?? 0
+  const cover = manga.cover || manga.coverImage
 
   return (
-    <article className="card manga-card">
-      <Link to={`/mangas/${manga._id}`} className="cover-shell">
-        {manga.coverImage ? (
-          <img src={manga.coverImage} alt={`Portada de ${manga.title}`} className="cover-image" />
-        ) : (
-          <div className="cover-fallback">
-            <span>{getInitials(manga.title)}</span>
+    <article className="figma-manga-card">
+      <div className="figma-poster">
+        <ImageWithFallback
+          src={cover}
+          alt={manga.title}
+          className="figma-poster-image"
+          loading="lazy"
+        />
+
+        {rating ? (
+          <div className="figma-rating-badge">
+            <span>★</span>
+            {Number(rating).toFixed(1)}
           </div>
-        )}
-      </Link>
+        ) : null}
 
-      <div className="card-content">
-        <div className="card-copy">
-          <span className="card-kicker">{manga.genre}</span>
-          <h3>{manga.title}</h3>
-          <p className="card-meta">por {manga.author}</p>
-          <p>{shortDescription}</p>
-        </div>
+        <div className="figma-poster-overlay">
+          <div className="figma-actions">
+            <button
+              type="button"
+              className={isFavorite ? 'figma-action figma-action-active' : 'figma-action'}
+              onClick={() => setIsFavorite((current) => !current)}
+              aria-label="Favorito"
+            >
+              ♥
+            </button>
+            <button
+              type="button"
+              className={isPending ? 'figma-action figma-action-pending' : 'figma-action'}
+              onClick={() => setIsPending((current) => !current)}
+              aria-label="Pendiente"
+            >
+              ＋
+            </button>
+          </div>
 
-        <div className="card-actions">
-          <Link to={`/mangas/${manga._id}`} className="button button-secondary">
-            Ver detalle
-          </Link>
+          <div className="figma-stars" aria-label="Puntuar manga">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onMouseEnter={() => setHoverRating(star)}
+                onMouseLeave={() => setHoverRating(0)}
+                onClick={() => setUserRating(star)}
+                className={star <= (hoverRating || userRating) ? 'figma-star figma-star-active' : 'figma-star'}
+                aria-label={`${star} estrellas`}
+              >
+                ★
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
+
+      <div className="figma-card-copy">
+        <h3>{manga.title}</h3>
+        <p>{votes ? `${Number(votes).toLocaleString('es-AR')} valoraciones` : manga.author || manga.genre || 'Manga'}</p>
       </div>
     </article>
   )

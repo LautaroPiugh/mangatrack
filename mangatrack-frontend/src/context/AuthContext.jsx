@@ -1,104 +1,89 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import authApi from '../api/authApi.js'
+import authService from '../services/authService.js'
 import {
-  TOKEN_STORAGE_KEY,
-  USER_STORAGE_KEY,
-  getApiErrorMessage,
-} from '../api/axiosClient.js'
+  clearStoredSession,
+  getStoredToken,
+  getStoredUser,
+  setStoredSession,
+} from '../services/api.js'
 import AuthContext from './auth-context.js'
 
-const clearStoredSession = () => {
-  localStorage.removeItem(TOKEN_STORAGE_KEY)
-  localStorage.removeItem(USER_STORAGE_KEY)
-}
-
-const persistSession = (token, user) => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, token)
-  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [token, setToken] = useState(null)
-  const [isBootstrapping, setIsBootstrapping] = useState(true)
+  const [token, setToken] = useState(() => getStoredToken())
+  const [user, setUser] = useState(() => getStoredUser())
+  const [isLoading, setIsLoading] = useState(true)
+
+  const logout = useCallback(() => {
+    authService.logout()
+    setToken(null)
+    setUser(null)
+  }, [])
+
+  const refreshUser = useCallback(async () => {
+    const nextUser = await authService.getMe()
+    setUser(nextUser)
+    setStoredSession({ token: getStoredToken(), user: nextUser })
+    return nextUser
+  }, [])
 
   useEffect(() => {
-    const bootstrapSession = async () => {
-      const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
-      const storedUser = localStorage.getItem(USER_STORAGE_KEY)
-
-      if (storedToken) {
-        setToken(storedToken)
-      }
-
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser))
-        } catch {
-          clearStoredSession()
-        }
-      }
+    const bootstrap = async () => {
+      const storedToken = getStoredToken()
 
       if (!storedToken) {
-        setIsBootstrapping(false)
+        setIsLoading(false)
         return
       }
 
       try {
-        const response = await authApi.getCurrentUser()
-        setUser(response.data.user)
-        persistSession(storedToken, response.data.user)
+        setToken(storedToken)
+        await refreshUser()
       } catch {
-        setUser(null)
-        setToken(null)
-        clearStoredSession()
+        logout()
       } finally {
-        setIsBootstrapping(false)
+        setIsLoading(false)
       }
     }
 
-    bootstrapSession()
-  }, [])
+    bootstrap()
+  }, [logout, refreshUser])
 
-  const login = async (credentials) => {
-    const response = await authApi.login(credentials)
-    const nextToken = response.data.token
-    const nextUser = response.data.user
+  const login = useCallback(async (credentials) => {
+    const response = await authService.login(credentials)
 
-    setToken(nextToken)
-    setUser(nextUser)
-    persistSession(nextToken, nextUser)
+    setToken(response.token)
+    setUser(response.user)
 
     return response
-  }
+  }, [])
 
-  const logout = () => {
-    setToken(null)
-    setUser(null)
-    clearStoredSession()
-  }
+  const register = useCallback(async (payload) => {
+    const response = await authService.register(payload)
 
-  const value = {
+    if (response.token) {
+      setToken(response.token)
+      setUser(response.user)
+    } else {
+      clearStoredSession()
+      setToken(null)
+      setUser(null)
+    }
+
+    return response
+  }, [])
+
+  const value = useMemo(() => ({
     user,
     token,
-    isBootstrapping,
     isAuthenticated: Boolean(token && user),
+    isLoading,
     login,
+    register,
     logout,
-    register: authApi.register,
-    refreshCurrentUser: async () => {
-      try {
-        const response = await authApi.getCurrentUser()
-        setUser(response.data.user)
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.data.user))
-        return response.data.user
-      } catch (error) {
-        logout()
-        throw new Error(getApiErrorMessage(error))
-      }
-    },
-  }
+    refreshUser,
+    getMe: refreshUser,
+  }), [isLoading, login, logout, refreshUser, register, token, user])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
