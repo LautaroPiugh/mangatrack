@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "nodemon --watch src src/server.js",
     "start": "node src/server.js",
-    "check": "node --check src/server.js"
+    "check": "node --check src/server.js",
+    "seed:admin": "node src/scripts/seedAdmin.js",
+    "seed:mangas": "node src/scripts/seedMangas.js"
   },
   "keywords": [],
   "author": "",

@@ -2,13 +2,18 @@ const authService = require('../services/auth.service');
 
 const register = async (req, res) => {
   const result = await authService.register(req.body);
+  const data = {
+    user: result.user,
+  };
+
+  if (result.token) {
+    data.token = result.token;
+  }
 
   res.status(201).json({
     success: true,
     message: result.message,
-    data: {
-      user: result.user,
-    },
+    data,
   });
 };
 

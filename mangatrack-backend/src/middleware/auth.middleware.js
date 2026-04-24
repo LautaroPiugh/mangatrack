@@ -1,28 +1,60 @@
 const userRepository = require('../repositories/user.repository');
 const { ForbiddenError, UnauthorizedError } = require('../utils/errors');
 const { extractBearerToken, verifyAccessToken } = require('../utils/jwt');
+const { sanitizeUser } = require('../utils/user');
 
-const requireAuth = async (req, res, next) => {
-  const token = extractBearerToken(req.headers.authorization || '');
+const resolveAuthenticatedUser = async (authorizationHeader = '', { allowAnonymous = false } = {}) => {
+  if (!authorizationHeader) {
+    if (allowAnonymous) {
+      return null;
+    }
+
+    throw new UnauthorizedError('No autorizado. Debes enviar un token Bearer.');
+  }
+
+  const token = extractBearerToken(authorizationHeader);
   const payload = verifyAccessToken(token);
   const user = await userRepository.findById(payload.sub);
 
   if (!user) {
-    return next(new UnauthorizedError('No autorizado. El usuario no existe.'));
+    throw new UnauthorizedError('No autorizado. El usuario no existe.');
   }
 
   if (!user.isVerified) {
-    return next(new ForbiddenError('Debes verificar tu cuenta antes de acceder a esta ruta.'));
+    throw new ForbiddenError('Debes verificar tu cuenta antes de acceder a esta ruta.');
   }
 
-  req.user = {
-    id: user._id.toString(),
-    name: user.name,
-    email: user.email,
-    isVerified: user.isVerified,
-  };
+  return sanitizeUser(user);
+};
+
+const authMiddleware = async (req, res, next) => {
+  req.user = await resolveAuthenticatedUser(req.headers.authorization || '');
 
   return next();
 };
 
-module.exports = requireAuth;
+const optionalAuthMiddleware = async (req, res, next) => {
+  req.user = await resolveAuthenticatedUser(req.headers.authorization || '', {
+    allowAnonymous: true,
+  });
+
+  return next();
+};
+
+const requireRole = (...roles) => (req, res, next) => {
+  if (!req.user) {
+    return next(new UnauthorizedError('No autorizado.'));
+  }
+
+  if (!roles.includes(req.user.role)) {
+    return next(new ForbiddenError('No tienes permisos para acceder a este recurso.'));
+  }
+
+  return next();
+};
+
+module.exports = {
+  authMiddleware,
+  optionalAuthMiddleware,
+  requireRole,
+};

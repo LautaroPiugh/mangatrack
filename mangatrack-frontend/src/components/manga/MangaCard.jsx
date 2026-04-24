@@ -1,19 +1,110 @@
-import { useState } from 'react'
-
 import ImageWithFallback from '../common/ImageWithFallback.jsx'
+import useFeedback from '../../hooks/useFeedback.js'
+import useUserLibrary from '../../hooks/useUserLibrary.js'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+const getMangaId = (manga) => manga?._id || manga?.id || null
 
 function MangaCard({ manga }) {
-  const [isFavorite, setIsFavorite] = useState(false)
-  const [isPending, setIsPending] = useState(false)
-  const [userRating, setUserRating] = useState(0)
-  const [hoverRating, setHoverRating] = useState(0)
+  const navigate = useNavigate()
+  const { notify } = useFeedback()
+  const {
+    isFavorite,
+    isInWatchlist,
+    addFavorite,
+    removeFavorite,
+    addToWatchlist,
+    removeFromWatchlist,
+    isLoading: isLibraryLoading,
+  } = useUserLibrary()
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false)
+  const [isWatchlistLoading, setIsWatchlistLoading] = useState(false)
 
-  const rating = manga.rating ?? manga.reviewSummary?.averageRating ?? 0
-  const votes = manga.votes ?? manga.reviewSummary?.totalReviews ?? 0
-  const cover = manga.cover || manga.coverImage
+  const mangaId = getMangaId(manga)
+  const rating = manga.rating ?? manga.averageRating ?? manga.reviewSummary?.averageRating ?? 0
+  const votes = manga.votes ?? manga.ratingsCount ?? manga.reviewSummary?.totalReviews ?? 0
+  const cover = manga.cover || manga.coverUrl || manga.coverImage
+  const metaCopy = votes
+    ? `${Number(votes).toLocaleString('es-AR')} valoraciones`
+    : manga.author || manga.artist || manga.genres?.[0] || manga.genre || 'Manga'
+  const detailSlug = manga.slug || mangaId
+  const favoriteActive = mangaId ? isFavorite(mangaId) : false
+  const watchlistActive = mangaId ? isInWatchlist(mangaId) : false
+
+  const openDetail = () => {
+    if (!detailSlug) {
+      return
+    }
+
+    navigate(`/mangas/${detailSlug}`)
+  }
+
+  const handleFavorite = async (event) => {
+    event.stopPropagation()
+
+    if (!mangaId || isFavoriteLoading || isLibraryLoading) {
+      return
+    }
+
+    setIsFavoriteLoading(true)
+
+    try {
+      if (favoriteActive) {
+        await removeFavorite(mangaId)
+      } else {
+        await addFavorite(mangaId)
+      }
+    } catch (error) {
+      notify({
+        variant: 'error',
+        title: 'No se pudo actualizar favoritos',
+        message: error.message || 'Intentá nuevamente.',
+      })
+    } finally {
+      setIsFavoriteLoading(false)
+    }
+  }
+
+  const handleWatchlist = async (event) => {
+    event.stopPropagation()
+
+    if (!mangaId || isWatchlistLoading || isLibraryLoading) {
+      return
+    }
+
+    setIsWatchlistLoading(true)
+
+    try {
+      if (watchlistActive) {
+        await removeFromWatchlist(mangaId)
+      } else {
+        await addToWatchlist(mangaId)
+      }
+    } catch (error) {
+      notify({
+        variant: 'error',
+        title: 'No se pudo actualizar pendientes',
+        message: error.message || 'Intentá nuevamente.',
+      })
+    } finally {
+      setIsWatchlistLoading(false)
+    }
+  }
 
   return (
-    <article className="figma-manga-card">
+    <article
+      className="figma-manga-card figma-manga-card-clickable"
+      role="link"
+      tabIndex={0}
+      onClick={openDetail}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          openDetail()
+        }
+      }}
+    >
       <div className="figma-poster">
         <ImageWithFallback
           src={cover}
@@ -33,43 +124,36 @@ function MangaCard({ manga }) {
           <div className="figma-actions">
             <button
               type="button"
-              className={isFavorite ? 'figma-action figma-action-active' : 'figma-action'}
-              onClick={() => setIsFavorite((current) => !current)}
-              aria-label="Favorito"
+              className={favoriteActive ? 'figma-action figma-action-active' : 'figma-action'}
+              onClick={handleFavorite}
+              aria-label={favoriteActive ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              aria-pressed={favoriteActive}
+              disabled={isFavoriteLoading || isLibraryLoading}
             >
-              ♥
+              {isFavoriteLoading ? '…' : '♥'}
             </button>
             <button
               type="button"
-              className={isPending ? 'figma-action figma-action-pending' : 'figma-action'}
-              onClick={() => setIsPending((current) => !current)}
-              aria-label="Pendiente"
+              className={watchlistActive ? 'figma-action figma-action-pending' : 'figma-action'}
+              onClick={handleWatchlist}
+              aria-label={watchlistActive ? 'Quitar de pendientes' : 'Agregar a pendientes'}
+              aria-pressed={watchlistActive}
+              disabled={isWatchlistLoading || isLibraryLoading}
             >
-              ＋
+              {isWatchlistLoading ? '…' : '＋'}
             </button>
           </div>
 
-          <div className="figma-stars" aria-label="Puntuar manga">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onMouseEnter={() => setHoverRating(star)}
-                onMouseLeave={() => setHoverRating(0)}
-                onClick={() => setUserRating(star)}
-                className={star <= (hoverRating || userRating) ? 'figma-star figma-star-active' : 'figma-star'}
-                aria-label={`${star} estrellas`}
-              >
-                ★
-              </button>
-            ))}
+          <div className="figma-card-flags" aria-live="polite">
+            {favoriteActive ? <span className="figma-card-flag">Favorito</span> : null}
+            {watchlistActive ? <span className="figma-card-flag figma-card-flag-pending">Pendiente</span> : null}
           </div>
         </div>
       </div>
 
       <div className="figma-card-copy">
         <h3>{manga.title}</h3>
-        <p>{votes ? `${Number(votes).toLocaleString('es-AR')} valoraciones` : manga.author || manga.genre || 'Manga'}</p>
+        <p>{metaCopy}</p>
       </div>
     </article>
   )

@@ -2,7 +2,7 @@ const express = require('express');
 const { body, param, query } = require('express-validator');
 
 const reviewController = require('../controllers/review.controller');
-const requireAuth = require('../middleware/auth.middleware');
+const { authMiddleware } = require('../middleware/auth.middleware');
 const validateRequest = require('../middleware/validate.middleware');
 
 const router = express.Router();
@@ -13,9 +13,6 @@ const reviewIdValidation = [
 ];
 
 const listReviewValidations = [
-  query('status')
-    .optional()
-    .isIn(['reading', 'completed', 'planned']).withMessage('El estado debe ser reading, completed o planned.'),
   query('user')
     .optional()
     .isMongoId().withMessage('El id del usuario no es valido.'),
@@ -32,10 +29,17 @@ const listReviewValidations = [
     .toInt(),
 ];
 
-const myReviewValidations = [
-  query('status')
+const recentReviewValidations = [
+  query('limit')
     .optional()
-    .isIn(['reading', 'completed', 'planned']).withMessage('El estado debe ser reading, completed o planned.'),
+    .isInt({ min: 1, max: 12 }).withMessage('El limite debe ser un entero entre 1 y 12.')
+    .toInt(),
+];
+
+const myReviewValidations = [
+  query('manga')
+    .optional()
+    .isMongoId().withMessage('El id del manga no es valido.'),
   query('page')
     .optional()
     .isInt({ min: 1 }).withMessage('La pagina debe ser un entero mayor o igual a 1.')
@@ -47,31 +51,30 @@ const myReviewValidations = [
 ];
 
 const createReviewValidations = [
+  body('mangaId')
+    .notEmpty().withMessage('El manga es obligatorio.')
+    .bail()
+    .isMongoId().withMessage('El id del manga no es valido.'),
   body('rating')
     .notEmpty().withMessage('La puntuacion es obligatoria.')
     .bail()
     .isInt({ min: 1, max: 5 }).withMessage('La puntuacion debe ser un entero entre 1 y 5.')
     .toInt(),
-  body('comment')
+  body('content')
+    .optional({ values: 'falsy' })
     .trim()
-    .notEmpty().withMessage('El comentario es obligatorio.')
-    .bail()
-    .isLength({ min: 5, max: 1200 }).withMessage('El comentario debe tener entre 5 y 1200 caracteres.'),
-  body('status')
-    .notEmpty().withMessage('El estado es obligatorio.')
-    .bail()
-    .isIn(['reading', 'completed', 'planned']).withMessage('El estado debe ser reading, completed o planned.'),
-  body('manga')
-    .notEmpty().withMessage('El manga es obligatorio.')
-    .bail()
-    .isMongoId().withMessage('El id del manga no es valido.'),
+    .isLength({ max: 1000 }).withMessage('El contenido no puede superar los 1000 caracteres.'),
+  body('isPublic')
+    .optional()
+    .isBoolean().withMessage('isPublic debe ser true o false.')
+    .toBoolean(),
 ];
 
 const updateReviewValidations = [
   ...reviewIdValidation,
   body()
     .custom((value, { req }) => (
-      ['rating', 'comment', 'status', 'manga']
+      ['rating', 'content', 'isPublic']
         .some((field) => req.body[field] !== undefined)
     ))
     .withMessage('Debes enviar al menos un campo para actualizar la review.'),
@@ -79,23 +82,22 @@ const updateReviewValidations = [
     .optional()
     .isInt({ min: 1, max: 5 }).withMessage('La puntuacion debe ser un entero entre 1 y 5.')
     .toInt(),
-  body('comment')
-    .optional()
+  body('content')
+    .optional({ values: 'falsy' })
     .trim()
-    .isLength({ min: 5, max: 1200 }).withMessage('El comentario debe tener entre 5 y 1200 caracteres.'),
-  body('status')
+    .isLength({ max: 1000 }).withMessage('El contenido no puede superar los 1000 caracteres.'),
+  body('isPublic')
     .optional()
-    .isIn(['reading', 'completed', 'planned']).withMessage('El estado debe ser reading, completed o planned.'),
-  body('manga')
-    .optional()
-    .isMongoId().withMessage('El id del manga no es valido.'),
+    .isBoolean().withMessage('isPublic debe ser true o false.')
+    .toBoolean(),
 ];
 
 router.get('/', listReviewValidations, validateRequest, reviewController.getAllReviews);
-router.get('/me', requireAuth, myReviewValidations, validateRequest, reviewController.getMyReviews);
+router.get('/recent', recentReviewValidations, validateRequest, reviewController.getRecentReviews);
+router.get('/me', authMiddleware, myReviewValidations, validateRequest, reviewController.getMyReviews);
 router.get('/:id', reviewIdValidation, validateRequest, reviewController.getReviewById);
-router.post('/', requireAuth, createReviewValidations, validateRequest, reviewController.createReview);
-router.put('/:id', requireAuth, updateReviewValidations, validateRequest, reviewController.updateReview);
-router.delete('/:id', requireAuth, reviewIdValidation, validateRequest, reviewController.deleteReview);
+router.post('/', authMiddleware, createReviewValidations, validateRequest, reviewController.createReview);
+router.put('/:id', authMiddleware, updateReviewValidations, validateRequest, reviewController.updateReview);
+router.delete('/:id', authMiddleware, reviewIdValidation, validateRequest, reviewController.deleteReview);
 
 module.exports = router;

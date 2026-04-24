@@ -2,7 +2,15 @@ const { isValidObjectId } = require('mongoose');
 
 const mangaRepository = require('../repositories/manga.repository');
 const reviewRepository = require('../repositories/review.repository');
-const { BadRequestError, NotFoundError } = require('../utils/errors');
+const userRepository = require('../repositories/user.repository');
+const { BadRequestError, ConflictError, NotFoundError } = require('../utils/errors');
+const {
+  MANGA_SORT_OPTIONS,
+  generateSlug,
+  normalizeGenres,
+  normalizeMangaSlug,
+} = require('../utils/manga');
+const { normalizeOptionalString } = require('../utils/user');
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 12;
@@ -32,6 +40,32 @@ const ensureValidMangaId = (mangaId) => {
   }
 };
 
+const buildSortOption = (sort = 'latest') => {
+  if (!MANGA_SORT_OPTIONS.includes(sort)) {
+    return { createdAt: -1 };
+  }
+
+  switch (sort) {
+    case 'rating':
+      return { averageRating: -1, ratingsCount: -1, title: 1 };
+    case 'popular':
+      return { ratingsCount: -1, averageRating: -1, title: 1 };
+    case 'title':
+      return { title: 1 };
+    case 'latest':
+    default:
+      return { createdAt: -1 };
+  }
+};
+
+const buildMangaReviewSort = (sort = 'recent') => {
+  if (sort === 'rating') {
+    return { rating: -1, createdAt: -1 };
+  }
+
+  return { createdAt: -1 };
+};
+
 const pickMangaPayload = (payload = {}) => {
   const mangaPayload = {};
 
@@ -39,20 +73,44 @@ const pickMangaPayload = (payload = {}) => {
     mangaPayload.title = payload.title.trim();
   }
 
+  if (payload.slug !== undefined) {
+    mangaPayload.slug = normalizeMangaSlug(payload.slug);
+  }
+
+  if (payload.synopsis !== undefined) {
+    mangaPayload.synopsis = normalizeOptionalString(payload.synopsis);
+  }
+
   if (payload.author !== undefined) {
-    mangaPayload.author = payload.author.trim();
+    mangaPayload.author = normalizeOptionalString(payload.author);
   }
 
-  if (payload.genre !== undefined) {
-    mangaPayload.genre = payload.genre.trim();
+  if (payload.artist !== undefined) {
+    mangaPayload.artist = normalizeOptionalString(payload.artist);
   }
 
-  if (payload.description !== undefined) {
-    mangaPayload.description = payload.description.trim();
+  if (payload.genres !== undefined) {
+    mangaPayload.genres = normalizeGenres(payload.genres);
   }
 
-  if (payload.coverImage !== undefined) {
-    mangaPayload.coverImage = payload.coverImage ? payload.coverImage.trim() : null;
+  if (payload.coverUrl !== undefined) {
+    mangaPayload.coverUrl = normalizeOptionalString(payload.coverUrl);
+  }
+
+  if (payload.status !== undefined) {
+    mangaPayload.status = payload.status;
+  }
+
+  if (payload.chapters !== undefined) {
+    mangaPayload.chapters = Number(payload.chapters);
+  }
+
+  if (payload.publishedFrom !== undefined) {
+    mangaPayload.publishedFrom = payload.publishedFrom || null;
+  }
+
+  if (payload.publishedTo !== undefined) {
+    mangaPayload.publishedTo = payload.publishedTo || null;
   }
 
   return mangaPayload;
@@ -61,17 +119,22 @@ const pickMangaPayload = (payload = {}) => {
 const getAllMangas = async (query = {}) => {
   const filters = {};
   const { page, limit, skip } = parsePagination(query);
+  const sort = buildSortOption(query.sort);
 
-  if (query.search) {
-    filters.search = query.search.trim();
+  if (query.q || query.search) {
+    filters.q = (query.q || query.search).trim();
   }
 
   if (query.genre) {
     filters.genre = query.genre.trim();
   }
 
+  if (query.status) {
+    filters.status = query.status;
+  }
+
   const [items, total] = await Promise.all([
-    mangaRepository.findAll(filters, { skip, limit }),
+    mangaRepository.findAll(filters, { skip, limit, sort }),
     mangaRepository.countDocuments(filters),
   ]);
 
@@ -81,29 +144,60 @@ const getAllMangas = async (query = {}) => {
   };
 };
 
-const getMangaById = async (mangaId) => {
-  ensureValidMangaId(mangaId);
-
-  const [manga, reviewSummary] = await Promise.all([
-    mangaRepository.findById(mangaId),
-    reviewRepository.getAverageRatingByMangaId(mangaId),
-  ]);
+const getMangaByIdOrSlug = async (idOrSlug, currentUser = null) => {
+  const manga = await mangaRepository.findByIdOrSlug(idOrSlug);
 
   if (!manga) {
     throw new NotFoundError('Manga no encontrado.');
   }
 
   const mangaData = manga.toObject();
-  mangaData.reviewSummary = reviewSummary;
+  mangaData.reviewSummary = {
+    averageRating: manga.averageRating,
+    totalReviews: manga.ratingsCount,
+  };
+  mangaData.isFavorite = false;
+  mangaData.isInWatchlist = false;
+  mangaData.userReview = null;
+
+  if (currentUser?.id) {
+    const [currentUserDocument, userReview] = await Promise.all([
+      userRepository.findById(currentUser.id),
+      reviewRepository.findByUserAndManga(currentUser.id, manga._id),
+    ]);
+
+    if (currentUserDocument) {
+      mangaData.isFavorite = (currentUserDocument.favorites || [])
+        .some((item) => item.toString() === manga._id.toString());
+      mangaData.isInWatchlist = (currentUserDocument.watchlist || [])
+        .some((item) => item.toString() === manga._id.toString());
+    }
+
+    if (userReview) {
+      mangaData.userReview = typeof userReview.toObject === 'function'
+        ? userReview.toObject()
+        : userReview;
+    }
+  }
 
   return mangaData;
 };
 
 const createManga = async (payload, userId) => {
   const mangaPayload = pickMangaPayload(payload);
+  const generatedSlug = mangaPayload.slug || generateSlug(mangaPayload.title || '');
+
+  if (!generatedSlug) {
+    throw new BadRequestError('No se pudo generar un slug valido para el manga.');
+  }
+
+  if (await mangaRepository.existsBySlug(generatedSlug)) {
+    throw new ConflictError('Ya existe un manga registrado con ese slug.');
+  }
 
   return mangaRepository.create({
     ...mangaPayload,
+    slug: generatedSlug,
     createdBy: userId || null,
   });
 };
@@ -120,6 +214,16 @@ const updateManga = async (mangaId, payload) => {
   }
 
   const mangaPayload = pickMangaPayload(payload);
+
+  if (mangaPayload.slug) {
+    const mangaWithSlug = await mangaRepository.findBySlug(mangaPayload.slug, {
+      populateCreatedBy: false,
+    });
+
+    if (mangaWithSlug && mangaWithSlug._id.toString() !== existingManga._id.toString()) {
+      throw new ConflictError('Ya existe un manga registrado con ese slug.');
+    }
+  }
 
   if (Object.keys(mangaPayload).length === 0) {
     throw new BadRequestError('Debes enviar al menos un campo para actualizar el manga.');
@@ -154,28 +258,28 @@ const getMangaReviews = async (mangaId, query = {}) => {
 
   const filters = {};
   const { page, limit, skip } = parsePagination(query);
+  filters.isPublic = true;
+  const sort = buildMangaReviewSort(query.sort);
 
-  if (query.status) {
-    filters.status = query.status;
-  }
-
-  const [items, total, reviewSummary] = await Promise.all([
-    reviewRepository.findByMangaId(mangaId, filters, { skip, limit }),
+  const [items, total] = await Promise.all([
+    reviewRepository.findByMangaId(mangaId, filters, { skip, limit, sort }),
     reviewRepository.countDocuments({ ...filters, manga: mangaId }),
-    reviewRepository.getAverageRatingByMangaId(mangaId),
   ]);
 
   return {
     manga,
     items,
-    reviewSummary,
+    reviewSummary: {
+      averageRating: manga.averageRating,
+      totalReviews: manga.ratingsCount,
+    },
     pagination: buildPaginationMeta(total, page, limit),
   };
 };
 
 module.exports = {
   getAllMangas,
-  getMangaById,
+  getMangaByIdOrSlug,
   createManga,
   updateManga,
   deleteManga,

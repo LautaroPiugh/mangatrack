@@ -5,20 +5,16 @@ const Review = require('../models/Review');
 const reviewPopulation = [
   {
     path: 'user',
-    select: 'name email isVerified',
+    select: 'name username',
   },
   {
     path: 'manga',
-    select: 'title author genre coverImage',
+    select: 'title slug author artist genres coverUrl status averageRating ratingsCount',
   },
 ];
 
 const buildReviewFilters = (filters = {}) => {
   const query = {};
-
-  if (filters.status) {
-    query.status = filters.status;
-  }
 
   if (filters.user) {
     query.user = filters.user;
@@ -26,6 +22,10 @@ const buildReviewFilters = (filters = {}) => {
 
   if (filters.manga) {
     query.manga = filters.manga;
+  }
+
+  if (typeof filters.isPublic === 'boolean') {
+    query.isPublic = filters.isPublic;
   }
 
   return query;
@@ -87,6 +87,15 @@ const existsById = async (id) => Boolean(await Review.exists({ _id: id }));
 
 const countDocuments = (filters = {}) => Review.countDocuments(buildReviewFilters(filters));
 
+const findRecentPublic = (limit = 4) => {
+  const query = Review.find({ isPublic: true });
+  applyReviewOptions(query, {
+    limit,
+    sort: { createdAt: -1 },
+  });
+  return query.exec();
+};
+
 const create = async (reviewData, options = {}) => {
   const createdReview = await Review.create(reviewData);
 
@@ -144,6 +153,79 @@ const getAverageRatingByMangaId = async (mangaId) => {
   };
 };
 
+const getUserRatingSummary = async (userId) => {
+  const [result] = await Review.aggregate([
+    {
+      $match: {
+        user: new mongoose.Types.ObjectId(userId),
+      },
+    },
+    {
+      $group: {
+        _id: '$user',
+        reviewsCount: { $sum: 1 },
+        averageRatingGiven: { $avg: '$rating' },
+      },
+    },
+  ]);
+
+  if (!result) {
+    return {
+      reviewsCount: 0,
+      averageRatingGiven: 0,
+    };
+  }
+
+  return {
+    reviewsCount: result.reviewsCount,
+    averageRatingGiven: Number(result.averageRatingGiven.toFixed(1)),
+  };
+};
+
+const getTopGenresByUserId = async (userId, limit = 3) => Review.aggregate([
+  {
+    $match: {
+      user: new mongoose.Types.ObjectId(userId),
+    },
+  },
+  {
+    $lookup: {
+      from: 'mangas',
+      localField: 'manga',
+      foreignField: '_id',
+      as: 'manga',
+    },
+  },
+  {
+    $unwind: '$manga',
+  },
+  {
+    $unwind: '$manga.genres',
+  },
+  {
+    $group: {
+      _id: '$manga.genres',
+      count: { $sum: 1 },
+    },
+  },
+  {
+    $sort: {
+      count: -1,
+      _id: 1,
+    },
+  },
+  {
+    $limit: limit,
+  },
+  {
+    $project: {
+      _id: 0,
+      genre: '$_id',
+      count: 1,
+    },
+  },
+]);
+
 module.exports = {
   findAll,
   findById,
@@ -152,9 +234,12 @@ module.exports = {
   findByUserAndManga,
   existsById,
   countDocuments,
+  findRecentPublic,
   create,
   updateById,
   deleteById,
   deleteManyByMangaId,
   getAverageRatingByMangaId,
+  getUserRatingSummary,
+  getTopGenresByUserId,
 };

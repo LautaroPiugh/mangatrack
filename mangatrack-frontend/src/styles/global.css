@@ -240,19 +240,35 @@ p {
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 16px;
   min-width: 0;
-  height: var(--header);
-  padding: 0 24px;
+  min-height: var(--header);
+  padding: 8px 24px;
   border-bottom: 1px solid var(--line);
   background: rgba(26, 26, 26, 0.94);
   backdrop-filter: blur(14px);
 }
 
-.global-search {
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: calc(var(--header) - 16px);
+  min-width: 0;
+}
+
+.topbar-search-slot {
+  display: flex;
+  align-items: center;
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 672px;
+}
+
+.global-search {
+  display: flex;
+  align-items: center;
+  width: min(100%, 672px);
+  min-width: 0;
 }
 
 .global-search,
@@ -301,8 +317,11 @@ p {
 .topbar-actions {
   display: flex;
   align-items: center;
+  margin-left: auto;
   flex: 0 0 auto;
+  flex-shrink: 0;
   gap: 12px;
+  min-width: 0;
 }
 
 .icon-button {
@@ -324,13 +343,19 @@ p {
 
 .user-menu {
   position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .user-menu-trigger {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 12px;
+  min-height: 40px;
   min-width: 0;
+  padding: 4px 0;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -425,6 +450,7 @@ p {
 .page-container {
   min-width: 0;
   min-height: calc(100vh - var(--header));
+  overflow-x: hidden;
 }
 
 .figma-page {
@@ -553,6 +579,11 @@ p {
   transform: translateY(-4px) scale(1.025);
 }
 
+.figma-manga-card-clickable:focus-visible {
+  outline: 2px solid rgba(34, 197, 94, 0.7);
+  outline-offset: 6px;
+}
+
 .figma-poster {
   position: relative;
   aspect-ratio: 2 / 3;
@@ -649,6 +680,12 @@ p {
   backdrop-filter: blur(10px);
 }
 
+.figma-action:disabled,
+.review-inline-action:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .figma-action-active {
   background: var(--green);
 }
@@ -660,6 +697,25 @@ p {
 .figma-stars,
 .figma-review-stars {
   gap: 4px;
+}
+
+.figma-card-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.figma-card-flag {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.18);
+  color: #dcfce7;
+  font-size: 0.75rem;
+}
+
+.figma-card-flag-pending {
+  background: rgba(249, 115, 22, 0.18);
+  color: #fed7aa;
 }
 
 .figma-star {
@@ -686,6 +742,195 @@ p {
   margin-top: 4px;
   color: #6b7280;
   font-size: 0.78rem;
+}
+
+.manga-detail-hero {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+  margin-bottom: 32px;
+}
+
+.manga-detail-poster-shell {
+  position: sticky;
+  top: calc(var(--header) + 24px);
+}
+
+.manga-detail-poster,
+.manga-detail-poster.image-fallback {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-lg);
+  object-fit: cover;
+  box-shadow: var(--shadow-card);
+}
+
+.manga-detail-copy {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.manga-detail-head h1 {
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  line-height: 1.05;
+}
+
+.manga-detail-head p {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.manga-detail-rating {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.manga-detail-rating strong {
+  font-size: 1.15rem;
+}
+
+.manga-detail-rating span:last-child {
+  color: var(--muted);
+}
+
+.manga-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.manga-detail-meta span {
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.manga-detail-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.manga-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.manga-detail-action-secondary {
+  box-shadow: 0 18px 44px rgba(249, 115, 22, 0.18);
+}
+
+.manga-detail-synopsis {
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+.manga-detail-synopsis p {
+  color: #d1d5db;
+  line-height: 1.7;
+}
+
+.manga-detail-link {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  padding: 0;
+  font-weight: 600;
+}
+
+.manga-detail-review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.manga-detail-inline-copy {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.manga-detail-skeleton {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 32px;
+}
+
+.manga-detail-skeleton-copy {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.skeleton-block {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.skeleton-block::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+.manga-detail-skeleton-poster {
+  aspect-ratio: 2 / 3;
+}
+
+.skeleton-title {
+  height: 56px;
+  width: min(480px, 92%);
+}
+
+.skeleton-line {
+  height: 18px;
+  width: min(320px, 70%);
+}
+
+.skeleton-line-wide {
+  width: 100%;
+}
+
+.skeleton-pill-row,
+.skeleton-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.skeleton-pill {
+  width: 92px;
+  height: 34px;
+  border-radius: 999px;
+}
+
+.skeleton-button {
+  width: 160px;
+  height: 44px;
+}
+
+.skeleton-button-wide {
+  width: 190px;
 }
 
 .review-list {
@@ -737,6 +982,12 @@ p {
   gap: 16px;
 }
 
+.figma-review-meta {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
 .figma-review-head h3 {
   font-size: 0.98rem;
   letter-spacing: -0.01em;
@@ -758,6 +1009,11 @@ p {
   font-size: 0.78rem;
 }
 
+.figma-review-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .figma-review-stars {
   margin-top: 14px;
 }
@@ -773,11 +1029,54 @@ p {
   line-height: 1.6;
 }
 
+.review-inline-action {
+  border: 1px solid rgba(248, 113, 113, 0.18);
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.review-inline-action:hover {
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.review-inline-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.08);
+  color: #bbf7d0;
+  font-size: 0.8rem;
+}
+
+.review-inline-link:hover {
+  background: rgba(34, 197, 94, 0.14);
+}
+
 .list-header {
   display: flex;
   justify-content: space-between;
   gap: 24px;
   padding-block: 32px;
+}
+
+.list-summary {
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 0.92rem;
+}
+
+.list-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  min-width: 0;
 }
 
 .filter-row {
@@ -864,6 +1163,294 @@ p {
   justify-content: center;
   gap: 12px;
   margin-top: 16px;
+}
+
+.admin-manga-panel {
+  margin-bottom: 24px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+.review-editor-panel {
+  margin-bottom: 24px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+.review-editor-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.review-editor-form label,
+.review-rating-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.review-editor-form select,
+.review-editor-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #0f0f0f;
+  color: white;
+  outline: 0;
+}
+
+.review-editor-form select {
+  min-height: 44px;
+  padding: 0 14px;
+}
+
+.review-editor-form textarea {
+  min-height: 120px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.review-editor-form select:hover,
+.review-editor-form textarea:hover {
+  border-color: #3a3a3a;
+  background: #111;
+}
+
+.review-editor-form select:focus,
+.review-editor-form textarea:focus {
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+.review-editor-form-wide,
+.review-editor-actions {
+  grid-column: 1 / -1;
+}
+
+.review-editor-actions {
+  display: flex;
+}
+
+.review-rating-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-rating-picker .figma-star {
+  font-size: 1.3rem;
+}
+
+.profile-shell {
+  display: grid;
+  gap: 32px;
+}
+
+.profile-overview-card {
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+}
+
+.profile-overview-head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--green), var(--orange));
+  color: #08120a;
+  font-size: 2rem;
+  font-weight: 900;
+  box-shadow: 0 18px 40px rgba(34, 197, 94, 0.2);
+}
+
+.profile-avatar-skeleton {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+}
+
+.profile-overview-copy {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.profile-overview-title h2 {
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  line-height: 1.05;
+}
+
+.profile-overview-title p {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.profile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.profile-meta span {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.profile-badge {
+  color: #dcfce7;
+  border-color: rgba(34, 197, 94, 0.24) !important;
+  background: rgba(34, 197, 94, 0.12) !important;
+}
+
+.profile-genre-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.profile-genre-pill {
+  display: grid;
+  gap: 4px;
+  min-width: 160px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+.profile-genre-pill strong {
+  font-size: 0.98rem;
+}
+
+.profile-genre-pill span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.library-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.library-summary-card {
+  display: grid;
+  gap: 4px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+.library-summary-card strong {
+  font-size: 1.35rem;
+}
+
+.library-summary-card span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.library-skeleton-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.library-skeleton-media {
+  min-height: 220px;
+}
+
+.admin-manga-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-manga-form label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.admin-manga-form input,
+.admin-manga-form select,
+.admin-manga-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #0f0f0f;
+  color: white;
+  outline: 0;
+}
+
+.admin-manga-form input,
+.admin-manga-form select {
+  min-height: 44px;
+  padding: 0 14px;
+}
+
+.admin-manga-form textarea {
+  min-height: 120px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.admin-manga-form input:hover,
+.admin-manga-form select:hover,
+.admin-manga-form textarea:hover {
+  border-color: #3a3a3a;
+  background: #111;
+}
+
+.admin-manga-form input:focus,
+.admin-manga-form select:focus,
+.admin-manga-form textarea:focus {
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+.admin-manga-form-wide,
+.admin-manga-form-actions {
+  grid-column: 1 / -1;
+}
+
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.pagination-copy {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .auth-screen {
@@ -1100,12 +1687,22 @@ p {
   }
 }
 
+@keyframes skeletonPulse {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 @media (max-width: 1180px) {
   .manga-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .library-summary-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1151,7 +1748,12 @@ p {
   }
 
   .topbar {
-    padding-inline: 14px;
+    padding: 8px 14px;
+  }
+
+  .topbar-inner {
+    gap: 12px;
+    min-height: calc(var(--header) - 16px);
   }
 
   .header-user-copy {
@@ -1164,8 +1766,45 @@ p {
     padding-inline: 18px;
   }
 
+  .manga-detail-hero,
+  .manga-detail-skeleton {
+    grid-template-columns: 1fr;
+  }
+
+  .manga-detail-poster-shell {
+    position: static;
+    max-width: 320px;
+  }
+
+  .manga-detail-review-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .list-header {
     flex-direction: column;
+  }
+
+  .list-header-actions {
+    align-items: stretch;
+  }
+
+  .profile-overview-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-manga-form {
+    grid-template-columns: 1fr;
+  }
+
+  .review-editor-form {
+    grid-template-columns: 1fr;
   }
 
   .auth-screen,
@@ -1183,6 +1822,23 @@ p {
 }
 
 @media (max-width: 640px) {
+  .topbar-actions {
+    gap: 8px;
+  }
+
+  .global-search {
+    width: 100%;
+  }
+
+  .user-menu-trigger {
+    gap: 0;
+  }
+
+  .avatar {
+    width: 34px;
+    height: 34px;
+  }
+
   .dashboard-hero-inner {
     padding-block: 32px;
   }
@@ -1191,6 +1847,10 @@ p {
   .manga-grid-wide {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
+  }
+
+  .library-summary-strip {
+    grid-template-columns: 1fr;
   }
 
   .stats-grid {
@@ -1202,10 +1862,33 @@ p {
     flex-direction: column;
   }
 
+  .figma-review-meta {
+    justify-items: start;
+  }
+
+  .manga-detail-actions {
+    flex-direction: column;
+  }
+
+  .manga-detail-actions .primary-action,
+  .manga-detail-actions .filter-pill {
+    width: 100%;
+  }
+
   .auth-form-side,
   .auth-visual-side,
   .auth-visual-caption {
     padding: 24px;
+  }
+
+  .profile-overview-card {
+    padding: 22px;
+  }
+
+  .profile-avatar {
+    width: 72px;
+    height: 72px;
+    font-size: 1.7rem;
   }
 
   .auth-visual-side {
@@ -1214,5 +1897,9 @@ p {
 
   .poster-cloud {
     gap: 14px;
+  }
+
+  .pagination-row {
+    flex-wrap: wrap;
   }
 }

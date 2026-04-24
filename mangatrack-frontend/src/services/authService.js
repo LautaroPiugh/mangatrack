@@ -13,7 +13,7 @@ export const authService = {
     })
     const data = unwrapData(payload)
 
-    if (data?.token) {
+    if (data?.token && data?.user) {
       setStoredSession({ token: data.token, user: data.user })
     }
 
@@ -32,7 +32,7 @@ export const authService = {
     })
     const data = unwrapData(payload)
 
-    if (data?.token) {
+    if (data?.token && data?.user) {
       setStoredSession({ token: data.token, user: data.user })
     }
 
@@ -40,6 +40,17 @@ export const authService = {
       ...payload,
       data,
       token: data?.token,
+      user: data?.user,
+    }
+  },
+
+  async verifyAccount(token) {
+    const payload = await request(`/auth/verify/${token}`)
+    const data = unwrapData(payload)
+
+    return {
+      ...payload,
+      data,
       user: data?.user,
     }
   },

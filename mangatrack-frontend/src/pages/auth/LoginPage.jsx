@@ -15,7 +15,7 @@ function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { login } = useAuth()
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -26,10 +26,10 @@ function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      await login({ email, password })
+      await login({ username, password })
       navigate(location.state?.from?.pathname || '/', { replace: true })
     } catch (loginError) {
-      setError(loginError.message || 'No se pudo iniciar sesión. Revisá tus datos e intentá otra vez.')
+      setError(loginError.message || 'No se pudo iniciar sesión. Revisá tu usuario y contraseña e intentá otra vez.')
     } finally {
       setIsSubmitting(false)
     }
@@ -54,15 +54,16 @@ function LoginPage() {
 
           <form className="figma-auth-form" onSubmit={handleLogin}>
             <label>
-              <span>Email</span>
+              <span>Usuario</span>
               <div className="input-shell">
-                <span>✉</span>
+                <span>@</span>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="tu@email.com"
+                  type="text"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="tu_usuario"
                   required
+                  autoComplete="username"
                 />
               </div>
             </label>
@@ -77,6 +78,7 @@ function LoginPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="••••••••"
                   required
+                  autoComplete="current-password"
                 />
               </div>
             </label>

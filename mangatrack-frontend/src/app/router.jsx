@@ -6,8 +6,12 @@ import PublicOnlyRoute from '../routes/PublicOnlyRoute.jsx'
 import HomePage from '../pages/HomePage.jsx'
 import LoginPage from '../pages/auth/LoginPage.jsx'
 import RegisterPage from '../pages/auth/RegisterPage.jsx'
+import VerifyAccountPage from '../pages/auth/VerifyAccountPage.jsx'
 import MangasPage from '../pages/mangas/MangasPage.jsx'
+import MangaDetailPage from '../pages/mangas/MangaDetailPage.jsx'
 import ReviewsPage from '../pages/reviews/ReviewsPage.jsx'
+import ProfilePage from '../pages/user/ProfilePage.jsx'
+import LibraryPage from '../pages/user/LibraryPage.jsx'
 import NotFoundPage from '../pages/NotFoundPage.jsx'
 
 const router = createBrowserRouter([
@@ -25,6 +29,10 @@ const router = createBrowserRouter([
     ],
   },
   {
+    path: '/verify/:token',
+    element: <VerifyAccountPage />,
+  },
+  {
     path: '/',
     element: <RootLayout />,
     children: [
@@ -40,8 +48,20 @@ const router = createBrowserRouter([
             element: <MangasPage />,
           },
           {
+            path: 'mangas/:slug',
+            element: <MangaDetailPage />,
+          },
+          {
             path: 'reviews',
             element: <ReviewsPage />,
+          },
+          {
+            path: 'profile',
+            element: <ProfilePage />,
+          },
+          {
+            path: 'library',
+            element: <LibraryPage />,
           },
         ],
       },

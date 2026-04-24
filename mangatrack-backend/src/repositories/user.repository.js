@@ -1,6 +1,30 @@
 const User = require('../models/User');
+const { normalizeEmail, normalizeUsername } = require('../utils/user');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const mangaCardProjection = 'title slug author artist genres coverUrl status averageRating ratingsCount';
+const libraryPopulation = {
+  favorites: {
+    path: 'favorites',
+    select: mangaCardProjection,
+  },
+  watchlist: {
+    path: 'watchlist',
+    select: mangaCardProjection,
+  },
+};
+
+const applyLibraryPopulation = (query, listName) => {
+  const listNames = Array.isArray(listName) ? listName : [listName];
+
+  listNames
+    .filter((item) => libraryPopulation[item])
+    .forEach((item) => {
+      query.populate(libraryPopulation[item]);
+    });
+
+  return query;
+};
 
 const buildSensitiveProjection = (options = {}) => {
   const projection = [];
@@ -23,9 +47,13 @@ const buildUserFilters = (filters = {}) => {
     query.isVerified = filters.isVerified;
   }
 
+  if (filters.role) {
+    query.role = filters.role;
+  }
+
   if (filters.search) {
     const regex = new RegExp(escapeRegex(filters.search.trim()), 'i');
-    query.$or = [{ name: regex }, { email: regex }];
+    query.$or = [{ name: regex }, { username: regex }, { email: regex }];
   }
 
   return query;
@@ -68,7 +96,18 @@ const findById = (id, options = {}) => {
 };
 
 const findByEmail = (email, options = {}) => {
-  const query = User.findOne({ email: email.toLowerCase().trim() });
+  const query = User.findOne({ email: normalizeEmail(email) });
+  const sensitiveProjection = buildSensitiveProjection(options);
+
+  if (sensitiveProjection) {
+    query.select(sensitiveProjection);
+  }
+
+  return query.exec();
+};
+
+const findByUsername = (username, options = {}) => {
+  const query = User.findOne({ username: normalizeUsername(username) });
   const sensitiveProjection = buildSensitiveProjection(options);
 
   if (sensitiveProjection) {
@@ -95,7 +134,11 @@ const findByVerificationToken = (verificationToken, options = {}) => {
 const existsById = async (id) => Boolean(await User.exists({ _id: id }));
 
 const existsByEmail = async (email) => Boolean(
-  await User.exists({ email: email.toLowerCase().trim() }),
+  await User.exists({ email: normalizeEmail(email) }),
+);
+
+const existsByUsername = async (username) => Boolean(
+  await User.exists({ username: normalizeUsername(username) }),
 );
 
 const countDocuments = (filters = {}) => User.countDocuments(buildUserFilters(filters));
@@ -134,16 +177,76 @@ const markAsVerified = (id) => User.findByIdAndUpdate(
 
 const deleteById = (id) => User.findByIdAndDelete(id).exec();
 
+const findByIdWithLibrary = (id, listName, options = {}) => {
+  const query = User.findById(id);
+  const sensitiveProjection = buildSensitiveProjection(options);
+
+  if (sensitiveProjection) {
+    query.select(sensitiveProjection);
+  }
+
+  return applyLibraryPopulation(query, listName).exec();
+};
+
+const addToLibrary = (id, listName, mangaId, options = {}) => {
+  const query = User.findByIdAndUpdate(
+    id,
+    {
+      $addToSet: {
+        [listName]: mangaId,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  const sensitiveProjection = buildSensitiveProjection(options);
+  if (sensitiveProjection) {
+    query.select(sensitiveProjection);
+  }
+
+  return applyLibraryPopulation(query, listName).exec();
+};
+
+const removeFromLibrary = (id, listName, mangaId, options = {}) => {
+  const query = User.findByIdAndUpdate(
+    id,
+    {
+      $pull: {
+        [listName]: mangaId,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  const sensitiveProjection = buildSensitiveProjection(options);
+  if (sensitiveProjection) {
+    query.select(sensitiveProjection);
+  }
+
+  return applyLibraryPopulation(query, listName).exec();
+};
+
 module.exports = {
   findAll,
   findById,
   findByEmail,
+  findByUsername,
   findByVerificationToken,
   existsById,
   existsByEmail,
+  existsByUsername,
   countDocuments,
   create,
   updateById,
   markAsVerified,
   deleteById,
+  findByIdWithLibrary,
+  addToLibrary,
+  removeFromLibrary,
 };

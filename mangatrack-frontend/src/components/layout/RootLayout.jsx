@@ -1,4 +1,4 @@
-import { Outlet, ScrollRestoration } from 'react-router-dom'
+import { Outlet, ScrollRestoration, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 
 import ToastViewport from '../common/ToastViewport.jsx'
@@ -8,8 +8,11 @@ import useAuth from '../../hooks/useAuth.js'
 
 function RootLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const location = useLocation()
   const { isAuthenticated, logout, user } = useAuth()
+  const initialSearchQuery = location.pathname.startsWith('/mangas')
+    ? new URLSearchParams(location.search).get('q') || ''
+    : ''
 
   return (
     <div className={`app-shell ${isCollapsed ? 'app-shell-collapsed' : ''}`}>
@@ -20,15 +23,15 @@ function RootLayout() {
         onLogout={logout}
       />
       <Header
+        key={location.pathname}
         isAuthenticated={isAuthenticated}
         user={user}
         onLogout={logout}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        initialSearchQuery={initialSearchQuery}
       />
 
       <main className="page-container">
-        <Outlet context={{ searchQuery, setSearchQuery }} />
+        <Outlet />
       </main>
 
       <ToastViewport />

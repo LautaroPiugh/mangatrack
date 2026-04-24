@@ -1,41 +1,9 @@
+import { useEffect, useState } from 'react'
+
 import MangaCard from '../components/manga/MangaCard.jsx'
 import ReviewCard from '../components/review/ReviewCard.jsx'
-
-const trendingMangas = [
-  { id: 1, title: 'One Piece', cover: 'https://images.unsplash.com/photo-1569701813229-33284b643e3c?w=500', rating: 4.8, votes: 15234 },
-  { id: 2, title: 'Attack on Titan', cover: 'https://images.unsplash.com/photo-1666153184621-bc6445e3568d?w=500', rating: 4.9, votes: 18492 },
-  { id: 3, title: 'Death Note', cover: 'https://images.unsplash.com/photo-1760113671986-63ccb46ae202?w=500', rating: 4.7, votes: 12847 },
-  { id: 4, title: 'Naruto Shippuden', cover: 'https://images.unsplash.com/photo-1673047233297-41890c998920?w=500', rating: 4.6, votes: 14523 },
-  { id: 5, title: 'My Hero Academia', cover: 'https://images.unsplash.com/photo-1569701813229-33284b643e3c?w=500', rating: 4.5, votes: 11234 },
-  { id: 6, title: 'Demon Slayer', cover: 'https://images.unsplash.com/photo-1666153184621-bc6445e3568d?w=500', rating: 4.8, votes: 16789 },
-]
-
-const recentReviews = [
-  {
-    id: 1,
-    user: 'Kenji',
-    manga: 'Jujutsu Kaisen',
-    rating: 5,
-    comment: 'Una obra maestra del shonen moderno. Los combates están increíblemente coreografiados.',
-    date: 'Hace 2 horas',
-  },
-  {
-    id: 2,
-    user: 'Sakura',
-    manga: 'Chainsaw Man',
-    rating: 4,
-    comment: 'Historia única y personajes memorables. El arte es brutal en el mejor sentido.',
-    date: 'Hace 5 horas',
-  },
-  {
-    id: 3,
-    user: 'Yuki',
-    manga: 'Berserk',
-    rating: 5,
-    comment: 'Simplemente legendario. Una experiencia que todo amante del manga debe vivir.',
-    date: 'Hace 1 día',
-  },
-]
+import mangaService from '../services/mangaService.js'
+import reviewService from '../services/reviewService.js'
 
 const stats = [
   { label: 'Mangas leídos', value: '47', icon: '本', color: 'green' },
@@ -45,6 +13,86 @@ const stats = [
 ]
 
 function HomePage() {
+  const [trendingMangas, setTrendingMangas] = useState([])
+  const [isLoadingTrending, setIsLoadingTrending] = useState(true)
+  const [trendingError, setTrendingError] = useState('')
+  const [recentReviews, setRecentReviews] = useState([])
+  const [isLoadingReviews, setIsLoadingReviews] = useState(true)
+  const [reviewsError, setReviewsError] = useState('')
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadTrendingMangas = async () => {
+      setIsLoadingTrending(true)
+      setTrendingError('')
+
+      try {
+        const response = await mangaService.getMangas({
+          limit: 6,
+          sort: 'rating',
+        })
+
+        if (!isMounted) {
+          return
+        }
+
+        setTrendingMangas(response.items || [])
+      } catch (error) {
+        if (!isMounted) {
+          return
+        }
+
+        setTrendingError(error.message || 'No se pudieron cargar las tendencias.')
+      } finally {
+        if (isMounted) {
+          setIsLoadingTrending(false)
+        }
+      }
+    }
+
+    loadTrendingMangas()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadRecentReviews = async () => {
+      setIsLoadingReviews(true)
+      setReviewsError('')
+
+      try {
+        const items = await reviewService.getRecentReviews({ limit: 4 })
+
+        if (!isMounted) {
+          return
+        }
+
+        setRecentReviews(items || [])
+      } catch (error) {
+        if (!isMounted) {
+          return
+        }
+
+        setReviewsError(error.message || 'No se pudieron cargar las reseñas recientes.')
+      } finally {
+        if (isMounted) {
+          setIsLoadingReviews(false)
+        }
+      }
+    }
+
+    loadRecentReviews()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   return (
     <div className="figma-page">
       <section className="dashboard-hero">
@@ -70,11 +118,34 @@ function HomePage() {
             <span>↗</span>
             <h2>Tendencias</h2>
           </div>
-          <div className="manga-grid">
-            {trendingMangas.map((manga) => (
-              <MangaCard key={manga.id} manga={manga} />
-            ))}
-          </div>
+          {isLoadingTrending ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">⌛</span>
+              <h2>Cargando tendencias</h2>
+              <p>Consultando los mangas mejor valorados.</p>
+            </div>
+          ) : null}
+          {!isLoadingTrending && trendingError ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">!</span>
+              <h2>No se pudieron cargar las tendencias</h2>
+              <p>{trendingError}</p>
+            </div>
+          ) : null}
+          {!isLoadingTrending && !trendingError && trendingMangas.length ? (
+            <div className="manga-grid">
+              {trendingMangas.map((manga) => (
+                <MangaCard key={manga._id || manga.slug} manga={manga} />
+              ))}
+            </div>
+          ) : null}
+          {!isLoadingTrending && !trendingError && !trendingMangas.length ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">本</span>
+              <h2>No hay mangas destacados</h2>
+              <p>El catálogo real todavía no tiene datos para esta sección.</p>
+            </div>
+          ) : null}
         </section>
 
         <section className="figma-section">
@@ -82,11 +153,34 @@ function HomePage() {
             <span>★</span>
             <h2>Reseñas recientes</h2>
           </div>
-          <div className="review-list">
-            {recentReviews.map((review) => (
-              <ReviewCard key={review.id} review={review} />
-            ))}
-          </div>
+          {isLoadingReviews ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">⌛</span>
+              <h2>Cargando reseñas</h2>
+              <p>Buscando las últimas reviews públicas.</p>
+            </div>
+          ) : null}
+          {!isLoadingReviews && reviewsError ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">!</span>
+              <h2>No se pudieron cargar las reseñas</h2>
+              <p>{reviewsError}</p>
+            </div>
+          ) : null}
+          {!isLoadingReviews && !reviewsError && recentReviews.length ? (
+            <div className="review-list">
+              {recentReviews.map((review) => (
+                <ReviewCard key={review._id || review.id} review={review} />
+              ))}
+            </div>
+          ) : null}
+          {!isLoadingReviews && !reviewsError && !recentReviews.length ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">★</span>
+              <h2>No hay reseñas recientes</h2>
+              <p>Todavía no se publicaron reviews nuevas.</p>
+            </div>
+          ) : null}
         </section>
       </div>
     </div>

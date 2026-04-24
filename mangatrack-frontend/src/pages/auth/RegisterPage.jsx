@@ -16,6 +16,7 @@ function RegisterPage() {
   const { register } = useAuth()
   const [form, setForm] = useState({
     name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -44,6 +45,7 @@ function RegisterPage() {
     try {
       const response = await register({
         name: form.name,
+        username: form.username,
         email: form.email,
         password: form.password,
       })
@@ -99,7 +101,29 @@ function RegisterPage() {
               <span>Nombre</span>
               <div className="input-shell">
                 <span>人</span>
-                <input name="name" value={form.name} onChange={handleChange} placeholder="Tu nombre" required />
+                <input
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  placeholder="Tu nombre"
+                  required
+                  autoComplete="name"
+                />
+              </div>
+            </label>
+
+            <label>
+              <span>Usuario</span>
+              <div className="input-shell">
+                <span>@</span>
+                <input
+                  name="username"
+                  value={form.username}
+                  onChange={handleChange}
+                  placeholder="tu_usuario"
+                  required
+                  autoComplete="username"
+                />
               </div>
             </label>
 
@@ -107,7 +131,15 @@ function RegisterPage() {
               <span>Email</span>
               <div className="input-shell">
                 <span>✉</span>
-                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="tu@email.com" required />
+                <input
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="tu@email.com"
+                  required
+                  autoComplete="email"
+                />
               </div>
             </label>
 
@@ -115,7 +147,15 @@ function RegisterPage() {
               <span>Contraseña</span>
               <div className="input-shell">
                 <span>●</span>
-                <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="••••••••" required />
+                <input
+                  name="password"
+                  type="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="Manga123!"
+                  required
+                  autoComplete="new-password"
+                />
               </div>
             </label>
 
@@ -123,7 +163,15 @@ function RegisterPage() {
               <span>Confirmar contraseña</span>
               <div className="input-shell">
                 <span>●</span>
-                <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} placeholder="••••••••" required />
+                <input
+                  name="confirmPassword"
+                  type="password"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Manga123!"
+                  required
+                  autoComplete="new-password"
+                />
               </div>
             </label>
 

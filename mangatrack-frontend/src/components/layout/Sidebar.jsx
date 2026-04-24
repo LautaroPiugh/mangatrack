@@ -1,13 +1,13 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 
-const navItems = [
-  { icon: '⌂', label: 'Inicio', path: '/' },
-  { icon: '本', label: 'Mangas', path: '/mangas' },
-  { icon: '★', label: 'Reseñas', path: '/reviews' },
-]
-
 function Sidebar({ isCollapsed, onToggle, isAuthenticated, onLogout }) {
   const navigate = useNavigate()
+  const navItems = [
+    { icon: '⌂', label: 'Inicio', path: '/' },
+    { icon: '本', label: 'Mangas', path: '/mangas' },
+    { icon: '★', label: 'Reseñas', path: '/reviews' },
+    ...(isAuthenticated ? [{ icon: '☰', label: 'Biblioteca', path: '/library' }] : []),
+  ]
 
   const handleLogout = () => {
     onLogout?.()
