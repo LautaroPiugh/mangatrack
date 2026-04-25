@@ -86,6 +86,16 @@ const removeFromWatchlist = async (req, res) => {
   });
 };
 
+const updatePreferences = async (req, res) => {
+  const preferences = await userLibraryService.updatePreferences(req.user.id, req.body);
+
+  res.status(200).json({
+    success: true,
+    message: 'Preferencias actualizadas correctamente.',
+    data: preferences,
+  });
+};
+
 module.exports = {
   getMyProfile,
   getMyLibrary,
@@ -95,4 +105,5 @@ module.exports = {
   getWatchlist,
   addToWatchlist,
   removeFromWatchlist,
+  updatePreferences,
 };

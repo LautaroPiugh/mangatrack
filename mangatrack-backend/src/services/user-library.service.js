@@ -161,6 +161,16 @@ const getWatchlist = async (userId) => getLibraryItems(userId, 'watchlist');
 const addToWatchlist = async (userId, mangaId) => updateLibraryItems(userId, 'watchlist', 'add', mangaId);
 const removeFromWatchlist = async (userId, mangaId) => updateLibraryItems(userId, 'watchlist', 'remove', mangaId);
 
+const updatePreferences = async (userId, preferences) => {
+  const user = await userRepository.updatePreferences(userId, preferences);
+
+  if (!user) {
+    throw new NotFoundError('Usuario no encontrado.');
+  }
+
+  return user.preferences;
+};
+
 module.exports = {
   getMyProfile,
   getMyLibrary,
@@ -170,4 +180,5 @@ module.exports = {
   getWatchlist,
   addToWatchlist,
   removeFromWatchlist,
+  updatePreferences,
 };

@@ -69,6 +69,55 @@ const findById = (id, options = {}) => {
   return query.exec();
 };
 
+const findByNormalizedTitle = (normalizedTitle, options = {}) => {
+  const query = Manga.findOne({ normalizedTitle });
+  applyMangaOptions(query, { populateCreatedBy: options.populateCreatedBy });
+  return query.exec();
+};
+
+const findByExternalSourceAndId = (source, externalId, options = {}) => {
+  const query = Manga.findOne({
+    'external.source': source,
+    'external.externalId': externalId,
+  });
+
+  applyMangaOptions(query, { populateCreatedBy: options.populateCreatedBy });
+
+  return query.exec();
+};
+
+const findImportCandidate = (fingerprint = {}, options = {}) => {
+  const filters = [];
+
+  if (fingerprint.externalSource && Number.isInteger(fingerprint.externalId)) {
+    filters.push({
+      'external.source': fingerprint.externalSource,
+      'external.externalId': fingerprint.externalId,
+    });
+  }
+
+  if (fingerprint.slug) {
+    filters.push({ slug: fingerprint.slug });
+  }
+
+  if (fingerprint.normalizedTitle) {
+    filters.push({ normalizedTitle: fingerprint.normalizedTitle });
+  }
+
+  if (fingerprint.title) {
+    filters.push({ title: new RegExp(`^${escapeRegex(fingerprint.title.trim())}$`, 'i') });
+  }
+
+  if (filters.length === 0) {
+    return Promise.resolve(null);
+  }
+
+  const query = Manga.findOne({ $or: filters });
+  applyMangaOptions(query, { populateCreatedBy: options.populateCreatedBy });
+
+  return query.exec();
+};
+
 const existsById = async (id) => Boolean(await Manga.exists({ _id: id }));
 const existsBySlug = async (slug) => Boolean(await Manga.exists({ slug }));
 
@@ -110,6 +159,9 @@ module.exports = {
   findById,
   findBySlug,
   findByIdOrSlug,
+  findByNormalizedTitle,
+  findByExternalSourceAndId,
+  findImportCandidate,
   existsById,
   existsBySlug,
   countDocuments,

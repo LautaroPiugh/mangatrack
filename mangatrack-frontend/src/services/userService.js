@@ -25,6 +25,12 @@ export const userService = {
       meta: payload?.meta || null,
     }
   },
+  async updatePreferences(preferences) {
+    return unwrapData(await request('/users/me/preferences', {
+      method: 'PUT',
+      body: preferences,
+    }))
+  },
 }
 
 export default userService

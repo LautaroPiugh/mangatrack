@@ -6,6 +6,7 @@
 **/build/
 **/.vite/
 coverage/
+/tmp
 
 # Environment files
 **/.env

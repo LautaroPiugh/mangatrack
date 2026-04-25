@@ -232,6 +232,28 @@ const removeFromLibrary = (id, listName, mangaId, options = {}) => {
   return applyLibraryPopulation(query, listName).exec();
 };
 
+const updatePreferences = (id, preferences, options = {}) => {
+  const query = User.findByIdAndUpdate(
+    id,
+    {
+      preferences: {
+        ...preferences,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  const sensitiveProjection = buildSensitiveProjection(options);
+  if (sensitiveProjection) {
+    query.select(sensitiveProjection);
+  }
+
+  return query.exec();
+};
+
 module.exports = {
   findAll,
   findById,
@@ -249,4 +271,5 @@ module.exports = {
   findByIdWithLibrary,
   addToLibrary,
   removeFromLibrary,
+  updatePreferences,
 };

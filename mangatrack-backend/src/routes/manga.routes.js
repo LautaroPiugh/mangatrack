@@ -2,9 +2,18 @@ const express = require('express');
 const { body, param, query } = require('express-validator');
 
 const mangaController = require('../controllers/manga.controller');
+const externalMangaController = require('../controllers/externalManga.controller');
 const { authMiddleware, optionalAuthMiddleware, requireRole } = require('../middleware/auth.middleware');
 const validateRequest = require('../middleware/validate.middleware');
-const { MANGA_SORT_OPTIONS, MANGA_STATUSES, SLUG_REGEX } = require('../utils/manga');
+const {
+  MANGA_SORT_OPTIONS,
+  MANGA_STATUSES,
+  EXTERNAL_MANGA_SOURCES,
+  EXTERNAL_MANGA_STATUSES,
+  EXTERNAL_MANGA_TYPES,
+  EXTERNAL_MANGA_ORDER_BY,
+  SLUG_REGEX,
+} = require('../utils/manga');
 
 const router = express.Router();
 
@@ -167,11 +176,121 @@ const mangaReviewsValidations = [
     .toInt(),
 ];
 
-router.get('/', listMangaValidations, validateRequest, mangaController.getAllMangas);
-router.get('/:id/reviews', mangaReviewsValidations, validateRequest, mangaController.getMangaReviews);
-router.get('/:idOrSlug', optionalAuthMiddleware, mangaIdOrSlugValidation, validateRequest, mangaController.getMangaById);
+const externalMangaSearchValidations = [
+  query('q')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 120 }).withMessage('La búsqueda debe tener entre 1 y 120 caracteres.'),
+  query('genre')
+    .optional()
+    .isInt({ min: 1 }).withMessage('El genero debe ser un MAL ID valido.')
+    .toInt(),
+  query('status')
+    .optional()
+    .isIn(EXTERNAL_MANGA_STATUSES).withMessage(`El estado externo debe ser ${EXTERNAL_MANGA_STATUSES.join(', ')}.`),
+  query('type')
+    .optional()
+    .isIn(EXTERNAL_MANGA_TYPES).withMessage(`El tipo externo debe ser ${EXTERNAL_MANGA_TYPES.join(', ')}.`),
+  query('orderBy')
+    .optional()
+    .isIn(EXTERNAL_MANGA_ORDER_BY).withMessage(`El orden externo debe ser ${EXTERNAL_MANGA_ORDER_BY.join(', ')}.`),
+  query('sort')
+    .optional()
+    .isIn(['asc', 'desc']).withMessage('El orden de clasificación debe ser asc o desc.'),
+  query('minScore')
+    .optional()
+    .isFloat({ min: 0, max: 10 }).withMessage('El score minimo debe estar entre 0 y 10.')
+    .toFloat(),
+  query('maxScore')
+    .optional()
+    .isFloat({ min: 0, max: 10 }).withMessage('El score maximo debe estar entre 0 y 10.')
+    .toFloat(),
+  query('year')
+    .optional()
+    .isInt({ min: 1900, max: 2100 }).withMessage('El año debe ser valido.')
+    .toInt(),
+  query('letter')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 1 }).withMessage('La letra debe tener un solo caracter.'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('La pagina debe ser un entero mayor o igual a 1.')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 25 }).withMessage('El limite externo debe ser un entero entre 1 y 25.')
+    .toInt(),
+  query()
+    .custom((value, { req }) => (
+      ['q', 'genre', 'status', 'type', 'orderBy', 'minScore', 'maxScore', 'year', 'letter']
+        .some((field) => req.query[field] !== undefined && req.query[field] !== '')
+    ))
+    .withMessage('Debes enviar al menos un criterio para buscar mangas externos.'),
+];
+
+const externalTopMangaValidations = [
+  query('filter')
+    .optional()
+    .isIn(['publishing', 'upcoming', 'bypopularity', 'favorite']).withMessage('El filtro top no es valido.'),
+  query('type')
+    .optional()
+    .isIn(EXTERNAL_MANGA_TYPES).withMessage(`El tipo externo debe ser ${EXTERNAL_MANGA_TYPES.join(', ')}.`),
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('La pagina debe ser un entero mayor o igual a 1.')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 25 }).withMessage('El limite externo debe ser un entero entre 1 y 25.')
+    .toInt(),
+];
+
+const externalMangaIdValidations = [
+  param('malId')
+    .isInt({ min: 1 }).withMessage('El MAL ID debe ser un entero mayor a 0.')
+    .toInt(),
+];
+
+const externalMangaImportValidations = [
+  body()
+    .custom((value, { req }) => Boolean(req.body.malId || req.body.manga))
+    .withMessage('Debes enviar un malId o un manga externo normalizado.'),
+  body('source')
+    .optional()
+    .isIn(EXTERNAL_MANGA_SOURCES).withMessage(`La fuente externa debe ser ${EXTERNAL_MANGA_SOURCES.join(', ')}.`),
+  body('malId')
+    .optional()
+    .isInt({ min: 1 }).withMessage('El malId debe ser un entero mayor a 0.')
+    .toInt(),
+  body('manga.source')
+    .optional()
+    .isIn(EXTERNAL_MANGA_SOURCES).withMessage(`La fuente del manga debe ser ${EXTERNAL_MANGA_SOURCES.join(', ')}.`),
+  body('manga.externalId')
+    .optional()
+    .isInt({ min: 1 }).withMessage('El externalId debe ser un entero mayor a 0.')
+    .toInt(),
+  body('manga.title')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 160 }).withMessage('El titulo externo debe tener entre 1 y 160 caracteres.'),
+];
+
 router.post('/', authMiddleware, requireRole('admin'), createMangaValidations, validateRequest, mangaController.createManga);
 router.put('/:id', authMiddleware, requireRole('admin'), updateMangaValidations, validateRequest, mangaController.updateManga);
 router.delete('/:id', authMiddleware, requireRole('admin'), mangaIdValidation, validateRequest, mangaController.deleteManga);
+
+router.get('/admin/external/search', authMiddleware, requireRole('admin'), externalMangaSearchValidations, validateRequest, externalMangaController.searchExternalMangas);
+router.get('/admin/external/top', authMiddleware, requireRole('admin'), externalTopMangaValidations, validateRequest, externalMangaController.getTopExternalMangas);
+router.get('/admin/external/genres', authMiddleware, requireRole('admin'), externalMangaController.getExternalMangaGenres);
+router.get('/admin/external/:malId', authMiddleware, requireRole('admin'), externalMangaIdValidations, validateRequest, externalMangaController.getExternalMangaById);
+router.post('/admin/external/import', authMiddleware, requireRole('admin'), externalMangaImportValidations, validateRequest, externalMangaController.importExternalManga);
+
+router.get('/admin/external-mangas/search', authMiddleware, requireRole('admin'), externalMangaSearchValidations, validateRequest, externalMangaController.searchExternalMangas);
+router.get('/admin/external-mangas/top', authMiddleware, requireRole('admin'), externalTopMangaValidations, validateRequest, externalMangaController.getTopExternalMangas);
+
+router.get('/', listMangaValidations, validateRequest, mangaController.getAllMangas);
+router.get('/:id/reviews', mangaReviewsValidations, validateRequest, mangaController.getMangaReviews);
+router.get('/:idOrSlug', optionalAuthMiddleware, mangaIdOrSlugValidation, validateRequest, mangaController.getMangaById);
 
 module.exports = router;

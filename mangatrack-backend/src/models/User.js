@@ -49,6 +49,13 @@ const userSchema = new mongoose.Schema(
       enum: USER_ROLES,
       default: 'user',
     },
+    preferences: {
+      theme: {
+        type: String,
+        enum: ['dark', 'light'],
+        default: 'dark',
+      },
+    },
     favorites: {
       type: [
         {

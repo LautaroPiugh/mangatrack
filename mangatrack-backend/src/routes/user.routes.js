@@ -1,5 +1,5 @@
 const express = require('express');
-const { param, query } = require('express-validator');
+const { body, param, query } = require('express-validator');
 
 const userController = require('../controllers/user.controller');
 const { authMiddleware } = require('../middleware/auth.middleware');
@@ -26,10 +26,17 @@ const libraryQueryValidation = [
     .toInt(),
 ];
 
+const preferencesValidation = [
+  body('theme')
+    .optional()
+    .isIn(['dark', 'light']).withMessage('El tema debe ser dark o light.'),
+];
+
 router.use(authMiddleware);
 
 router.get('/me/profile', userController.getMyProfile);
 router.get('/me/library', libraryQueryValidation, validateRequest, userController.getMyLibrary);
+router.put('/me/preferences', preferencesValidation, validateRequest, userController.updatePreferences);
 router.get('/me/favorites', userController.getFavorites);
 router.post('/me/favorites/:mangaId', mangaIdValidation, validateRequest, userController.addFavorite);
 router.delete('/me/favorites/:mangaId', mangaIdValidation, validateRequest, userController.removeFavorite);

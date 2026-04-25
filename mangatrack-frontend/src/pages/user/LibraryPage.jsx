@@ -54,7 +54,7 @@ function LibraryPage() {
               }
             : {
                 section: activeTab,
-                limit: 60,
+                limit: 50,
               },
         )
 

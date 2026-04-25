@@ -3,12 +3,15 @@ const { isValidObjectId } = require('mongoose');
 const mangaRepository = require('../repositories/manga.repository');
 const reviewRepository = require('../repositories/review.repository');
 const userRepository = require('../repositories/user.repository');
+const externalMangaService = require('./externalManga.service');
 const { BadRequestError, ConflictError, NotFoundError } = require('../utils/errors');
 const {
   MANGA_SORT_OPTIONS,
+  EXTERNAL_MANGA_SOURCES,
   generateSlug,
   normalizeGenres,
   normalizeMangaSlug,
+  normalizeTitleForMatching,
 } = require('../utils/manga');
 const { normalizeOptionalString } = require('../utils/user');
 
@@ -71,6 +74,7 @@ const pickMangaPayload = (payload = {}) => {
 
   if (payload.title !== undefined) {
     mangaPayload.title = payload.title.trim();
+    mangaPayload.normalizedTitle = normalizeTitleForMatching(payload.title);
   }
 
   if (payload.slug !== undefined) {
@@ -115,6 +119,71 @@ const pickMangaPayload = (payload = {}) => {
 
   return mangaPayload;
 };
+
+const pickPrimaryAuthor = (authors = []) => authors[0] || null;
+const pickPrimaryArtist = (authors = []) => authors[1] || authors[0] || null;
+const parsePositiveInteger = (value) => {
+  const parsedValue = Number.parseInt(value, 10);
+
+  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : null;
+};
+
+const buildImportFingerprint = (externalManga = {}) => {
+  const title = externalManga.title || '';
+  const slug = generateSlug(title) || null;
+
+  return {
+    externalSource: externalManga.source,
+    externalId: parsePositiveInteger(externalManga.externalId),
+    normalizedTitle: normalizeTitleForMatching(title),
+    slug,
+    title,
+  };
+};
+
+const buildImportedMangaPayload = (externalManga = {}, userId) => {
+  const generatedSlug = generateSlug(externalManga.title || '') || `${externalManga.source || 'external'}-${externalManga.externalId}`;
+  const authors = Array.isArray(externalManga.authors) ? externalManga.authors : [];
+  const normalizedGenres = normalizeGenres(externalManga.genres);
+
+  return {
+    title: externalManga.title,
+    normalizedTitle: normalizeTitleForMatching(externalManga.title),
+    slug: generatedSlug,
+    synopsis: normalizeOptionalString(externalManga.synopsis),
+    author: normalizeOptionalString(externalManga.author || pickPrimaryAuthor(authors)),
+    artist: normalizeOptionalString(externalManga.artist || pickPrimaryArtist(authors)),
+    genres: normalizedGenres,
+    coverUrl: normalizeOptionalString(externalManga.coverImage || externalManga.coverUrl),
+    status: externalManga.status || 'ongoing',
+    chapters: externalManga.chapters ?? undefined,
+    publishedFrom: externalManga.publishedFrom || null,
+    publishedTo: externalManga.publishedTo || null,
+    createdBy: userId || null,
+    external: {
+      source: externalManga.source,
+      externalId: parsePositiveInteger(externalManga.externalId),
+      url: normalizeOptionalString(externalManga.url),
+      bannerImage: normalizeOptionalString(externalManga.bannerImage),
+      titleEnglish: normalizeOptionalString(externalManga.titleEnglish),
+      titleJapanese: normalizeOptionalString(externalManga.titleJapanese),
+      titleSynonyms: normalizeOptionalArray(externalManga.titleSynonyms),
+      authors: normalizeOptionalArray(authors),
+      type: normalizeOptionalString(externalManga.type),
+      volumes: externalManga.volumes ?? null,
+      score: externalManga.score ?? null,
+      rank: externalManga.rank ?? null,
+      popularity: externalManga.popularity ?? null,
+    },
+  };
+};
+
+const normalizeOptionalArray = (values = []) => [...new Set(
+  values
+    .filter((value) => typeof value === 'string')
+    .map((value) => value.trim())
+    .filter(Boolean),
+)];
 
 const getAllMangas = async (query = {}) => {
   const filters = {};
@@ -202,6 +271,73 @@ const createManga = async (payload, userId) => {
   });
 };
 
+const importExternalManga = async (payload = {}, userId) => {
+  const source = payload.source || payload.manga?.source || 'jikan';
+
+  if (!EXTERNAL_MANGA_SOURCES.includes(source)) {
+    throw new BadRequestError('La fuente externa indicada no es valida.');
+  }
+
+  if (!payload.malId && !payload.manga?.externalId) {
+    throw new BadRequestError('Debes enviar un malId o un manga externo normalizado.');
+  }
+
+  console.info('[external-manga] import requested', {
+    source,
+    malId: payload.malId || payload.manga?.externalId || null,
+    requestedBy: userId || null,
+  });
+
+  let externalManga = payload.manga || null;
+
+  if (!externalManga || !externalManga.title || !externalManga.externalId) {
+    externalManga = await externalMangaService.getExternalMangaById(payload.malId || payload.manga?.externalId);
+  }
+
+  if (externalManga.source !== source) {
+    externalManga = {
+      ...externalManga,
+      source,
+    };
+  }
+
+  const duplicate = await mangaRepository.findImportCandidate(buildImportFingerprint(externalManga), {
+    populateCreatedBy: false,
+  });
+
+  if (duplicate) {
+    console.info('[external-manga] import skipped duplicate', {
+      source,
+      externalId: externalManga.externalId,
+      duplicateId: duplicate._id.toString(),
+      duplicateSlug: duplicate.slug,
+    });
+
+    return {
+      manga: duplicate,
+      imported: false,
+      duplicate: true,
+      message: 'El manga ya existe en MangaTrack.',
+    };
+  }
+
+  const createdManga = await mangaRepository.create(buildImportedMangaPayload(externalManga, userId));
+
+  console.info('[external-manga] import created', {
+    source,
+    externalId: externalManga.externalId,
+    mangaId: createdManga._id.toString(),
+    slug: createdManga.slug,
+  });
+
+  return {
+    manga: createdManga,
+    imported: true,
+    duplicate: false,
+    message: 'Manga importado correctamente.',
+  };
+};
+
 const updateManga = async (mangaId, payload) => {
   ensureValidMangaId(mangaId);
 
@@ -281,6 +417,7 @@ module.exports = {
   getAllMangas,
   getMangaByIdOrSlug,
   createManga,
+  importExternalManga,
   updateManga,
   deleteManga,
   getMangaReviews,

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 const getDisplayName = (user) => (
   user?.username
@@ -12,12 +12,20 @@ const getInitial = (user) => (
   getDisplayName(user).trim().slice(0, 1).toUpperCase() || 'M'
 )
 
-const menuItems = [
-  { label: 'Mi perfil', path: '/profile' },
-  { label: 'Mi biblioteca', path: '/library' },
-  { label: 'Favoritos', path: '/library?tab=favorites' },
-  { label: 'Pendientes', path: '/library?tab=watchlist' },
-]
+const getMenuItems = (user) => {
+  const items = [
+    { label: 'Mi perfil', path: '/profile' },
+    { label: 'Mi biblioteca', path: '/library' },
+    { label: 'Favoritos', path: '/library?tab=favorites' },
+    { label: 'Pendientes', path: '/library?tab=watchlist' },
+  ]
+
+  if (user?.role === 'admin') {
+    items.unshift({ label: 'Panel admin', path: '/admin' })
+  }
+
+  return items
+}
 
 function UserMenu({ user, isAuthenticated = false, onLogout }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -73,7 +81,7 @@ function UserMenu({ user, isAuthenticated = false, onLogout }) {
 
       {isMenuOpen ? (
         <div className="user-dropdown" role="menu">
-          {menuItems.map((item) => (
+          {getMenuItems(user).map((item) => (
             <button
               key={item.path}
               type="button"
@@ -93,42 +101,9 @@ function UserMenu({ user, isAuthenticated = false, onLogout }) {
   )
 }
 
-function Header({ user, isAuthenticated = false, initialSearchQuery = '', onLogout }) {
-  const [searchQuery, setSearchQuery] = useState(initialSearchQuery)
-  const hasMountedRef = useRef(false)
+function Header({ user, isAuthenticated = false, onLogout }) {
+  const [searchQuery, setSearchQuery] = useState('')
   const navigate = useNavigate()
-  const location = useLocation()
-
-  useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true
-      return undefined
-    }
-
-    const nextQuery = searchQuery.trim()
-    const currentQuery = location.pathname.startsWith('/mangas')
-      ? new URLSearchParams(location.search).get('q') || ''
-      : ''
-
-    if (location.pathname === '/mangas' && nextQuery === currentQuery) {
-      return undefined
-    }
-
-    const debounceTimer = window.setTimeout(() => {
-      const searchParams = new URLSearchParams()
-
-      if (nextQuery) {
-        searchParams.set('q', nextQuery)
-      }
-
-      navigate({
-        pathname: '/mangas',
-        search: searchParams.toString() ? `?${searchParams.toString()}` : '',
-      }, { replace: true })
-    }, 300)
-
-    return () => window.clearTimeout(debounceTimer)
-  }, [location.pathname, location.search, navigate, searchQuery])
 
   const handleSearch = (event) => {
     event.preventDefault()

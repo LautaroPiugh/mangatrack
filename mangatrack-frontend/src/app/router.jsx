@@ -1,7 +1,9 @@
 import { createBrowserRouter } from 'react-router-dom'
 
 import RootLayout from '../components/layout/RootLayout.jsx'
+import AdminLayout from '../components/admin/AdminLayout.jsx'
 import ProtectedRoute from '../routes/ProtectedRoute.jsx'
+import AdminRoute from '../routes/AdminRoute.jsx'
 import PublicOnlyRoute from '../routes/PublicOnlyRoute.jsx'
 import HomePage from '../pages/HomePage.jsx'
 import LoginPage from '../pages/auth/LoginPage.jsx'
@@ -12,6 +14,9 @@ import MangaDetailPage from '../pages/mangas/MangaDetailPage.jsx'
 import ReviewsPage from '../pages/reviews/ReviewsPage.jsx'
 import ProfilePage from '../pages/user/ProfilePage.jsx'
 import LibraryPage from '../pages/user/LibraryPage.jsx'
+import AdminMangasPage from '../pages/admin/AdminMangasPage.jsx'
+import AdminMangaCreatePage from '../pages/admin/AdminMangaCreatePage.jsx'
+import AdminMangaEditPage from '../pages/admin/AdminMangaEditPage.jsx'
 import NotFoundPage from '../pages/NotFoundPage.jsx'
 
 const router = createBrowserRouter([
@@ -62,6 +67,33 @@ const router = createBrowserRouter([
           {
             path: 'library',
             element: <LibraryPage />,
+          },
+        ],
+      },
+      {
+        element: <AdminRoute />,
+        children: [
+          {
+            path: 'admin',
+            element: <AdminLayout />,
+            children: [
+              {
+                index: true,
+                element: <AdminMangasPage />,
+              },
+              {
+                path: 'mangas',
+                element: <AdminMangasPage />,
+              },
+              {
+                path: 'mangas/new',
+                element: <AdminMangaCreatePage />,
+              },
+              {
+                path: 'mangas/:id/edit',
+                element: <AdminMangaEditPage />,
+              },
+            ],
           },
         ],
       },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 
 import MangaCard from '../../components/manga/MangaCard.jsx'
 import useAuth from '../../hooks/useAuth.js'
@@ -13,17 +13,6 @@ const statusFilters = [
   { label: 'Cancelado', value: 'cancelled' },
 ]
 
-const initialAdminForm = {
-  title: '',
-  author: '',
-  artist: '',
-  synopsis: '',
-  genres: '',
-  coverUrl: '',
-  status: 'ongoing',
-  chapters: '',
-}
-
 function MangasPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
@@ -31,11 +20,6 @@ function MangasPage() {
   const [meta, setMeta] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const [createError, setCreateError] = useState('')
-  const [createSuccess, setCreateSuccess] = useState('')
-  const [adminForm, setAdminForm] = useState(initialAdminForm)
 
   const isAdmin = user?.role === 'admin'
   const q = searchParams.get('q') || ''
@@ -126,53 +110,6 @@ function MangasPage() {
     setSearchParams(nextSearchParams)
   }
 
-  const handleAdminFormChange = (event) => {
-    const { name, value } = event.target
-    setAdminForm((current) => ({ ...current, [name]: value }))
-  }
-
-  const handleCreateManga = async (event) => {
-    event.preventDefault()
-    setCreateError('')
-    setCreateSuccess('')
-    setIsCreating(true)
-
-    try {
-      await mangaService.createManga({
-        title: adminForm.title,
-        author: adminForm.author || undefined,
-        artist: adminForm.artist || undefined,
-        synopsis: adminForm.synopsis || undefined,
-        genres: adminForm.genres
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
-        coverUrl: adminForm.coverUrl || undefined,
-        status: adminForm.status,
-        chapters: adminForm.chapters || undefined,
-      })
-
-      setCreateSuccess('Manga creado correctamente.')
-      setAdminForm(initialAdminForm)
-
-      const response = await mangaService.getMangas({
-        q,
-        status,
-        genre,
-        page,
-        limit: 12,
-        sort: q ? 'title' : 'rating',
-      })
-
-      setMangas(response.items || [])
-      setMeta(response.meta)
-    } catch (createMangaError) {
-      setCreateError(createMangaError.message || 'No se pudo crear el manga.')
-    } finally {
-      setIsCreating(false)
-    }
-  }
-
   const goToPage = (nextPage) => {
     updateFilters({ page: nextPage > 1 ? String(nextPage) : '' })
   }
@@ -188,13 +125,9 @@ function MangasPage() {
 
         <div className="list-header-actions">
           {isAdmin ? (
-            <button
-              type="button"
-              className="primary-action"
-              onClick={() => setIsCreateOpen((current) => !current)}
-            >
-              {isCreateOpen ? 'Cancelar' : 'Nuevo manga'}
-            </button>
+            <Link to="/admin/mangas/new" className="primary-action">
+              Nuevo manga
+            </Link>
           ) : null}
 
           <div className="filter-row">
@@ -230,92 +163,6 @@ function MangasPage() {
       </section>
 
       <div className="figma-content">
-        {isAdmin && isCreateOpen ? (
-          <section className="admin-manga-panel">
-            <div className="section-title">
-              <span>＋</span>
-              <h2>Nuevo manga</h2>
-            </div>
-
-            <form className="admin-manga-form" onSubmit={handleCreateManga}>
-              <label>
-                <span>Título</span>
-                <input name="title" value={adminForm.title} onChange={handleAdminFormChange} required />
-              </label>
-
-              <label>
-                <span>Autor</span>
-                <input name="author" value={adminForm.author} onChange={handleAdminFormChange} />
-              </label>
-
-              <label>
-                <span>Artista</span>
-                <input name="artist" value={adminForm.artist} onChange={handleAdminFormChange} />
-              </label>
-
-              <label>
-                <span>Géneros</span>
-                <input
-                  name="genres"
-                  value={adminForm.genres}
-                  onChange={handleAdminFormChange}
-                  placeholder="Action, Adventure, Fantasy"
-                />
-              </label>
-
-              <label>
-                <span>Portada</span>
-                <input
-                  name="coverUrl"
-                  value={adminForm.coverUrl}
-                  onChange={handleAdminFormChange}
-                  placeholder="https://..."
-                />
-              </label>
-
-              <label>
-                <span>Estado</span>
-                <select name="status" value={adminForm.status} onChange={handleAdminFormChange}>
-                  <option value="ongoing">En publicación</option>
-                  <option value="completed">Finalizado</option>
-                  <option value="hiatus">En pausa</option>
-                  <option value="cancelled">Cancelado</option>
-                </select>
-              </label>
-
-              <label>
-                <span>Capítulos</span>
-                <input
-                  name="chapters"
-                  type="number"
-                  min="0"
-                  value={adminForm.chapters}
-                  onChange={handleAdminFormChange}
-                />
-              </label>
-
-              <label className="admin-manga-form-wide">
-                <span>Sinopsis</span>
-                <textarea
-                  name="synopsis"
-                  value={adminForm.synopsis}
-                  onChange={handleAdminFormChange}
-                  rows="4"
-                />
-              </label>
-
-              <div className="admin-manga-form-actions">
-                <button type="submit" className="primary-action" disabled={isCreating}>
-                  {isCreating ? 'Creando...' : 'Guardar manga'}
-                </button>
-              </div>
-            </form>
-
-            {createError ? <p className="auth-feedback auth-feedback-error">{createError}</p> : null}
-            {createSuccess ? <p className="auth-feedback auth-feedback-success">{createSuccess}</p> : null}
-          </section>
-        ) : null}
-
         {isLoading ? (
           <div className="empty-state">
             <span className="empty-state-icon">⌛</span>

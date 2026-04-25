@@ -54,6 +54,24 @@ class ConflictError extends AppError {
   }
 }
 
+class TooManyRequestsError extends AppError {
+  constructor(message = 'Demasiadas solicitudes.', details = null) {
+    super(message, 429, {
+      code: 'TOO_MANY_REQUESTS',
+      details,
+    });
+  }
+}
+
+class ServiceUnavailableError extends AppError {
+  constructor(message = 'Servicio no disponible.', details = null) {
+    super(message, 503, {
+      code: 'SERVICE_UNAVAILABLE',
+      details,
+    });
+  }
+}
+
 class InternalServerError extends AppError {
   constructor(message = 'Error interno del servidor.', details = null) {
     super(message, 500, {
@@ -71,5 +89,7 @@ module.exports = {
   ForbiddenError,
   NotFoundError,
   ConflictError,
+  TooManyRequestsError,
+  ServiceUnavailableError,
   InternalServerError,
 };
