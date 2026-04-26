@@ -4,8 +4,8 @@ const mangaApi = {
   list(params = {}) {
     return apiClient.get('/mangas', { params }).then(getResponseData)
   },
-  getById(id) {
-    return apiClient.get(`/mangas/${id}`).then(getResponseData)
+  getById(idOrSlug) {
+    return apiClient.get(`/mangas/${idOrSlug}`).then(getResponseData)
   },
   create(payload) {
     return apiClient.post('/mangas', payload).then(getResponseData)

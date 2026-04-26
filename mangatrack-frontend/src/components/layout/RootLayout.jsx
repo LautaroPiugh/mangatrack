@@ -1,24 +1,35 @@
-import { Outlet, ScrollRestoration } from 'react-router-dom'
+import { Outlet, ScrollRestoration, useLocation } from 'react-router-dom'
+import { useState } from 'react'
 
 import ToastViewport from '../common/ToastViewport.jsx'
-import Navbar from './Navbar.jsx'
+import Header from './Header.jsx'
+import Sidebar from './Sidebar.jsx'
+import useAuth from '../../hooks/useAuth.js'
 
 function RootLayout() {
-  return (
-    <div className="app-shell">
-      <div className="background-orb background-orb-a" />
-      <div className="background-orb background-orb-b" />
+  const location = useLocation()
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const { isAuthenticated, logout, user } = useAuth()
+  const isAdminView = location.pathname.startsWith('/admin')
 
-      <Navbar />
+  return (
+    <div className={`app-shell ${isCollapsed ? 'app-shell-collapsed' : ''} ${isAdminView ? 'app-shell-admin' : ''}`}>
+      <Sidebar
+        hideSidebar={isAdminView}
+        isCollapsed={isCollapsed}
+        onToggle={() => setIsCollapsed((current) => !current)}
+        isAuthenticated={isAuthenticated}
+        onLogout={logout}
+      />
+      <Header
+        isAuthenticated={isAuthenticated}
+        user={user}
+        onLogout={logout}
+      />
 
       <main className="page-container">
         <Outlet />
       </main>
-
-      <footer className="site-footer">
-        <span>MangaTrack</span>
-        <span>Proyecto final full-stack con React, Express y MongoDB.</span>
-      </footer>
 
       <ToastViewport />
       <ScrollRestoration />

@@ -1,138 +1,244 @@
-import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
-import mangaApi from '../api/mangaApi.js'
-import reviewApi from '../api/reviewApi.js'
-import { getApiErrorMessage } from '../api/axiosClient.js'
-import Alert from '../components/common/Alert.jsx'
-import EmptyState from '../components/common/EmptyState.jsx'
-import Loader from '../components/common/Loader.jsx'
 import MangaCard from '../components/manga/MangaCard.jsx'
 import ReviewCard from '../components/review/ReviewCard.jsx'
-import StatCard from '../components/common/StatCard.jsx'
+import useI18n from '../hooks/useI18n.js'
+import mangaService from '../services/mangaService.js'
+import reviewService from '../services/reviewService.js'
+import userService from '../services/userService.js'
 
 function HomePage() {
-  const [featuredMangas, setFeaturedMangas] = useState([])
+  const { t } = useI18n()
+  const [userStats, setUserStats] = useState(null)
+  const [trendingMangas, setTrendingMangas] = useState([])
+  const [isLoadingTrending, setIsLoadingTrending] = useState(true)
+  const [trendingError, setTrendingError] = useState('')
   const [recentReviews, setRecentReviews] = useState([])
-  const [stats, setStats] = useState({ mangas: 0, reviews: 0 })
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [isLoadingReviews, setIsLoadingReviews] = useState(true)
+  const [reviewsError, setReviewsError] = useState('')
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
 
   useEffect(() => {
-    const loadHomeData = async () => {
+    let isMounted = true
+
+    const loadStats = async () => {
+      setIsLoadingStats(true)
+
       try {
-        setIsLoading(true)
-        setError('')
+        const profile = await userService.getMyProfile()
 
-        const [mangaResponse, reviewResponse] = await Promise.all([
-          mangaApi.list({ limit: 4 }),
-          reviewApi.list({ limit: 3 }),
-        ])
+        if (!isMounted) {
+          return
+        }
 
-        setFeaturedMangas(mangaResponse.data)
-        setRecentReviews(reviewResponse.data)
-        setStats({
-          mangas: mangaResponse.meta?.total || mangaResponse.data.length,
-          reviews: reviewResponse.meta?.total || reviewResponse.data.length,
-        })
-      } catch (requestError) {
-        setError(getApiErrorMessage(requestError, 'No se pudo cargar la portada inicial.'))
+        setUserStats(profile?.stats || {})
+      } catch {
+        if (!isMounted) {
+          return
+        }
+        // Error loading stats will be handled by showing 0 values
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoadingStats(false)
+        }
       }
     }
 
-    loadHomeData()
+    void loadStats()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
+  useEffect(() => {
+    let isMounted = true
+
+    const loadTrendingMangas = async () => {
+      setIsLoadingTrending(true)
+      setTrendingError('')
+
+      try {
+        const response = await mangaService.getMangas({
+          limit: 6,
+          sort: 'rating',
+        })
+
+        if (!isMounted) {
+          return
+        }
+
+        setTrendingMangas(response.items || [])
+      } catch (error) {
+        if (!isMounted) {
+          return
+        }
+
+        setTrendingError(error.message || t('home.trendingErrorTitle'))
+      } finally {
+        if (isMounted) {
+          setIsLoadingTrending(false)
+        }
+      }
+    }
+
+    loadTrendingMangas()
+
+    return () => {
+      isMounted = false
+    }
+  }, [t])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadRecentReviews = async () => {
+      setIsLoadingReviews(true)
+      setReviewsError('')
+
+      try {
+        const items = await reviewService.getRecentReviews({ limit: 4 })
+
+        if (!isMounted) {
+          return
+        }
+
+        setRecentReviews(items || [])
+      } catch (error) {
+        if (!isMounted) {
+          return
+        }
+
+        setReviewsError(error.message || t('home.reviewsErrorTitle'))
+      } finally {
+        if (isMounted) {
+          setIsLoadingReviews(false)
+        }
+      }
+    }
+
+    loadRecentReviews()
+
+    return () => {
+      isMounted = false
+    }
+  }, [t])
+
   return (
-    <div className="stack-xl">
-      <section className="hero-panel">
-        <div className="hero-copy">
-          <span className="page-eyebrow">Proyecto Final</span>
-          <h1>Tu biblioteca de mangas, resenas y progreso de lectura.</h1>
-          <p>
-            MangaTrack combina catalogo, seguimiento personal y resenas en una interfaz sobria,
-            clara y lista para seguir creciendo como producto real.
-          </p>
-
-          <div className="hero-actions">
-            <Link to="/mangas" className="button button-primary">
-              Explorar catalogo
-            </Link>
-            <Link to="/reviews" className="button button-secondary">
-              Ver reviews
-            </Link>
-          </div>
-        </div>
-
-        <div className="hero-stats">
-          <StatCard label="Mangas cargados" value={stats.mangas} accent="amber" />
-          <StatCard label="Reviews publicadas" value={stats.reviews} accent="blue" />
-          <StatCard
-            label="Enfoque"
-            value="Full-stack"
-            description="Seguimiento personal, catalogo editable y autenticacion con verificacion por email."
-            accent="slate"
-          />
+    <div className="figma-page">
+      <section className="dashboard-hero">
+        <div className="dashboard-hero-inner">
+          <h1>{t('home.heroTitle')}</h1>
+          <p>{t('home.heroSubtitle')}</p>
         </div>
       </section>
 
-      {error ? <Alert variant="error">{error}</Alert> : null}
+      <div className="figma-content">
+        <section className="stats-grid">
+          {isLoadingStats ? (
+            Array.from({ length: 4 }).map((_, idx) => (
+              <div key={`stat-skeleton-${idx}`} className="stat-card">
+                <div className="skeleton-block skeleton-line" />
+                <div className="skeleton-block skeleton-title" />
+              </div>
+            ))
+          ) : null}
+          {!isLoadingStats && userStats ? (
+            <>
+              <article className="stat-card stat-card-green">
+                <span className="stat-icon">本</span>
+                <strong>{userStats.favoritesCount || 0}</strong>
+                <p>{t('home.favoritesStat')}</p>
+              </article>
+              <article className="stat-card stat-card-orange">
+                <span className="stat-icon">★</span>
+                <strong>{userStats.reviewsCount || 0}</strong>
+                <p>{t('home.reviewsStat')}</p>
+              </article>
+              <article className="stat-card stat-card-blue">
+                <span className="stat-icon">◷</span>
+                <strong>{userStats.watchlistCount || 0}</strong>
+                <p>{t('home.watchlistStat')}</p>
+              </article>
+              <article className="stat-card stat-card-purple">
+                <span className="stat-icon">☆</span>
+                <strong>{Number(userStats.averageRatingGiven || 0).toFixed(1)}</strong>
+                <p>{t('home.averageRatingStat')}</p>
+              </article>
+            </>
+          ) : null}
+        </section>
 
-      <section className="content-section">
-        <div className="section-heading">
-          <div>
-            <span className="page-eyebrow">Catalogo</span>
-            <h2>Mangas destacados</h2>
+        <section className="figma-section">
+          <div className="section-title">
+            <span>↗</span>
+            <h2>{t('home.trendingTitle')}</h2>
           </div>
-          <Link to="/mangas" className="button button-ghost">
-            Ver todos
-          </Link>
-        </div>
+          {isLoadingTrending ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">⌛</span>
+              <h2>{t('home.trendingLoadingTitle')}</h2>
+              <p>{t('home.trendingLoadingMessage')}</p>
+            </div>
+          ) : null}
+          {!isLoadingTrending && trendingError ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">!</span>
+              <h2>{t('home.trendingErrorTitle')}</h2>
+              <p>{trendingError}</p>
+            </div>
+          ) : null}
+          {!isLoadingTrending && !trendingError && trendingMangas.length ? (
+            <div className="manga-grid">
+              {trendingMangas.map((manga) => (
+                <MangaCard key={manga._id || manga.slug} manga={manga} />
+              ))}
+            </div>
+          ) : null}
+          {!isLoadingTrending && !trendingError && !trendingMangas.length ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">本</span>
+              <h2>{t('home.trendingEmptyTitle')}</h2>
+              <p>{t('home.trendingEmptyMessage')}</p>
+            </div>
+          ) : null}
+        </section>
 
-        {isLoading ? (
-          <Loader label="Cargando mangas destacados..." />
-        ) : featuredMangas.length > 0 ? (
-          <div className="card-grid card-grid-mangas">
-            {featuredMangas.map((manga) => (
-              <MangaCard key={manga._id} manga={manga} />
-            ))}
+        <section className="figma-section">
+          <div className="section-title">
+            <span>★</span>
+            <h2>{t('home.recentReviewsTitle')}</h2>
           </div>
-        ) : (
-          <EmptyState
-            title="Todavia no hay mangas cargados"
-            description="Cuando se creen mangas desde la aplicacion, apareceran aqui para explorar el catalogo."
-          />
-        )}
-      </section>
-
-      <section className="content-section">
-        <div className="section-heading">
-          <div>
-            <span className="page-eyebrow">Actividad reciente</span>
-            <h2>Ultimas reviews</h2>
-          </div>
-          <Link to="/reviews" className="button button-ghost">
-            Ir al listado
-          </Link>
-        </div>
-
-        {isLoading ? (
-          <Loader label="Cargando reviews recientes..." />
-        ) : recentReviews.length > 0 ? (
-          <div className="stack-md">
-            {recentReviews.map((review) => (
-              <ReviewCard key={review._id} review={review} compact />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="No hay reviews recientes"
-            description="Las reseñas publicadas por los usuarios apareceran en esta seccion."
-          />
-        )}
-      </section>
+          {isLoadingReviews ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">⌛</span>
+              <h2>{t('home.reviewsLoadingTitle')}</h2>
+              <p>{t('home.reviewsLoadingMessage')}</p>
+            </div>
+          ) : null}
+          {!isLoadingReviews && reviewsError ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">!</span>
+              <h2>{t('home.reviewsErrorTitle')}</h2>
+              <p>{reviewsError}</p>
+            </div>
+          ) : null}
+          {!isLoadingReviews && !reviewsError && recentReviews.length ? (
+            <div className="review-list">
+              {recentReviews.map((review) => (
+                <ReviewCard key={review._id || review.id} review={review} />
+              ))}
+            </div>
+          ) : null}
+          {!isLoadingReviews && !reviewsError && !recentReviews.length ? (
+            <div className="empty-state">
+              <span className="empty-state-icon">★</span>
+              <h2>{t('home.reviewsEmptyTitle')}</h2>
+              <p>{t('home.reviewsEmptyMessage')}</p>
+            </div>
+          ) : null}
+        </section>
+      </div>
     </div>
   )
 }

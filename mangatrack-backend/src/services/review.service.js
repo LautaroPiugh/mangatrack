@@ -2,12 +2,14 @@ const { isValidObjectId } = require('mongoose');
 
 const mangaRepository = require('../repositories/manga.repository');
 const reviewRepository = require('../repositories/review.repository');
+const { recordActivitySafely } = require('./activity.service');
+const { recalculateMangaRating } = require('./manga-rating.service');
 const {
   BadRequestError,
-  ConflictError,
   ForbiddenError,
   NotFoundError,
 } = require('../utils/errors');
+const { normalizeOptionalString } = require('../utils/user');
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
@@ -63,11 +65,20 @@ const getReviewOrThrow = async (reviewId, options = { populate: false }) => {
   return review;
 };
 
-const ensureReviewOwner = (review, userId) => {
-  if (review.user.toString() !== userId) {
+const ensureReviewAccess = (review, currentUser) => {
+  if (currentUser?.role === 'admin') {
+    return;
+  }
+
+  if (review.user.toString() !== currentUser?.id) {
     throw new ForbiddenError('No tienes permisos para modificar esta review.');
   }
 };
+
+const syncMangaRatingSummary = async (...mangaIds) => Promise.all(
+  [...new Set(mangaIds.filter(Boolean).map((mangaId) => mangaId.toString()))]
+    .map((mangaId) => recalculateMangaRating(mangaId)),
+);
 
 const pickReviewPayload = (payload = {}) => {
   const reviewPayload = {};
@@ -76,15 +87,17 @@ const pickReviewPayload = (payload = {}) => {
     reviewPayload.rating = Number(payload.rating);
   }
 
-  if (payload.comment !== undefined) {
-    reviewPayload.comment = payload.comment.trim();
+  if (payload.content !== undefined) {
+    reviewPayload.content = normalizeOptionalString(payload.content);
   }
 
-  if (payload.status !== undefined) {
-    reviewPayload.status = payload.status;
+  if (payload.isPublic !== undefined) {
+    reviewPayload.isPublic = Boolean(payload.isPublic);
   }
 
-  if (payload.manga !== undefined) {
+  if (payload.mangaId !== undefined) {
+    reviewPayload.manga = payload.mangaId;
+  } else if (payload.manga !== undefined) {
     reviewPayload.manga = payload.manga;
   }
 
@@ -92,12 +105,10 @@ const pickReviewPayload = (payload = {}) => {
 };
 
 const getAllReviews = async (query = {}) => {
-  const filters = {};
+  const filters = {
+    isPublic: true,
+  };
   const { page, limit, skip } = parsePagination(query);
-
-  if (query.status) {
-    filters.status = query.status;
-  }
 
   if (query.user) {
     ensureValidObjectId(query.user, 'id del usuario');
@@ -120,19 +131,35 @@ const getAllReviews = async (query = {}) => {
   };
 };
 
-const getReviewById = async (reviewId) => getReviewOrThrow(reviewId);
+const getReviewById = async (reviewId) => {
+  const review = await getReviewOrThrow(reviewId);
+
+  if (!review.isPublic) {
+    throw new NotFoundError('Review no encontrada.');
+  }
+
+  return review;
+};
+
+const getRecentReviews = async (query = {}) => {
+  const limit = Math.min(Math.max(Number.parseInt(query.limit, 10) || 4, 1), 12);
+  return reviewRepository.findRecentPublic(limit);
+};
 
 const getMyReviews = async (userId, query = {}) => {
-  const filters = {};
+  const filters = {
+    user: userId,
+  };
   const { page, limit, skip } = parsePagination(query);
 
-  if (query.status) {
-    filters.status = query.status;
+  if (query.manga) {
+    ensureValidObjectId(query.manga, 'id del manga');
+    filters.manga = query.manga;
   }
 
   const [items, total] = await Promise.all([
-    reviewRepository.findByUserId(userId, filters, { skip, limit }),
-    reviewRepository.countDocuments({ ...filters, user: userId }),
+    reviewRepository.findAll(filters, { skip, limit }),
+    reviewRepository.countDocuments(filters),
   ]);
 
   return {
@@ -141,29 +168,65 @@ const getMyReviews = async (userId, query = {}) => {
   };
 };
 
-const createReview = async (payload, userId) => {
-  await ensureMangaExists(payload.manga);
+const createReview = async (payload, currentUser) => {
+  const reviewPayload = pickReviewPayload(payload);
 
-  const existingReview = await reviewRepository.findByUserAndManga(userId, payload.manga, {
+  if (!reviewPayload.manga) {
+    throw new BadRequestError('El manga es obligatorio.');
+  }
+
+  await ensureMangaExists(reviewPayload.manga);
+
+  const existingReview = await reviewRepository.findByUserAndManga(currentUser.id, reviewPayload.manga, {
     populate: false,
   });
 
   if (existingReview) {
-    throw new ConflictError('Ya tienes una review creada para este manga.');
+    const updatedReview = await reviewRepository.updateById(existingReview._id, {
+      rating: reviewPayload.rating,
+      content: reviewPayload.content ?? null,
+      isPublic: reviewPayload.isPublic ?? existingReview.isPublic,
+    });
+
+    await syncMangaRatingSummary(reviewPayload.manga);
+
+    return {
+      created: false,
+      review: updatedReview,
+    };
   }
 
-  return reviewRepository.create({
-    rating: Number(payload.rating),
-    comment: payload.comment.trim(),
-    status: payload.status,
-    user: userId,
-    manga: payload.manga,
+  const review = await reviewRepository.create({
+    rating: reviewPayload.rating,
+    content: reviewPayload.content ?? null,
+    isPublic: reviewPayload.isPublic ?? true,
+    user: currentUser.id,
+    manga: reviewPayload.manga,
   });
+
+  await syncMangaRatingSummary(reviewPayload.manga);
+  if (review.isPublic !== false) {
+    await recordActivitySafely({
+      user: currentUser.id,
+      type: 'review_created',
+      manga: reviewPayload.manga,
+      review: review._id,
+      visibility: 'public',
+      metadata: {
+        rating: review.rating,
+      },
+    });
+  }
+
+  return {
+    created: true,
+    review,
+  };
 };
 
-const updateReview = async (reviewId, payload, userId) => {
+const updateReview = async (reviewId, payload, currentUser) => {
   const existingReview = await getReviewOrThrow(reviewId, { populate: false });
-  ensureReviewOwner(existingReview, userId);
+  ensureReviewAccess(existingReview, currentUser);
 
   const reviewPayload = pickReviewPayload(payload);
 
@@ -171,26 +234,19 @@ const updateReview = async (reviewId, payload, userId) => {
     throw new BadRequestError('Debes enviar al menos un campo para actualizar la review.');
   }
 
-  if (reviewPayload.manga !== undefined) {
-    await ensureMangaExists(reviewPayload.manga);
+  const updatedReview = await reviewRepository.updateById(reviewId, reviewPayload);
 
-    const duplicatedReview = await reviewRepository.findByUserAndManga(userId, reviewPayload.manga, {
-      populate: false,
-    });
+  await syncMangaRatingSummary(existingReview.manga);
 
-    if (duplicatedReview && duplicatedReview._id.toString() !== existingReview._id.toString()) {
-      throw new ConflictError('Ya tienes una review creada para ese manga.');
-    }
-  }
-
-  return reviewRepository.updateById(reviewId, reviewPayload);
+  return updatedReview;
 };
 
-const deleteReview = async (reviewId, userId) => {
+const deleteReview = async (reviewId, currentUser) => {
   const existingReview = await getReviewOrThrow(reviewId, { populate: false });
-  ensureReviewOwner(existingReview, userId);
+  ensureReviewAccess(existingReview, currentUser);
 
   await reviewRepository.deleteById(reviewId);
+  await syncMangaRatingSummary(existingReview.manga);
 
   return existingReview;
 };
@@ -198,6 +254,7 @@ const deleteReview = async (reviewId, userId) => {
 module.exports = {
   getAllReviews,
   getReviewById,
+  getRecentReviews,
   getMyReviews,
   createReview,
   updateReview,

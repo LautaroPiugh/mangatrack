@@ -1,74 +1,151 @@
 import { createBrowserRouter } from 'react-router-dom'
 
 import RootLayout from '../components/layout/RootLayout.jsx'
+import AdminLayout from '../components/admin/AdminLayout.jsx'
 import ProtectedRoute from '../routes/ProtectedRoute.jsx'
+import AdminRoute from '../routes/AdminRoute.jsx'
+import PublicOnlyRoute from '../routes/PublicOnlyRoute.jsx'
 import HomePage from '../pages/HomePage.jsx'
+import FeedPage from '../pages/FeedPage.jsx'
 import LoginPage from '../pages/auth/LoginPage.jsx'
 import RegisterPage from '../pages/auth/RegisterPage.jsx'
 import VerifyAccountPage from '../pages/auth/VerifyAccountPage.jsx'
-import MangaDetailPage from '../pages/mangas/MangaDetailPage.jsx'
-import MangaFormPage from '../pages/mangas/MangaFormPage.jsx'
+import ResendVerificationPage from '../pages/auth/ResendVerificationPage.jsx'
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage.jsx'
+import ResetPasswordPage from '../pages/auth/ResetPasswordPage.jsx'
 import MangasPage from '../pages/mangas/MangasPage.jsx'
-import MyReviewsPage from '../pages/reviews/MyReviewsPage.jsx'
-import ReviewFormPage from '../pages/reviews/ReviewFormPage.jsx'
+import MangaDetailPage from '../pages/mangas/MangaDetailPage.jsx'
 import ReviewsPage from '../pages/reviews/ReviewsPage.jsx'
+import ProfilePage from '../pages/user/ProfilePage.jsx'
+import LibraryPage from '../pages/user/LibraryPage.jsx'
+import UserPublicProfilePage from '../pages/user/UserPublicProfilePage.jsx'
+import MyListsPage from '../pages/user/MyListsPage.jsx'
+import MangaListDetailPage from '../pages/user/MangaListDetailPage.jsx'
+import SettingsProfilePage from '../pages/user/SettingsProfilePage.jsx'
+import AdminMangasPage from '../pages/admin/AdminMangasPage.jsx'
+import AdminMangaCreatePage from '../pages/admin/AdminMangaCreatePage.jsx'
+import AdminMangaEditPage from '../pages/admin/AdminMangaEditPage.jsx'
 import NotFoundPage from '../pages/NotFoundPage.jsx'
 
 const router = createBrowserRouter([
+  {
+    element: <PublicOnlyRoute />,
+    children: [
+      {
+        path: '/login',
+        element: <LoginPage />,
+      },
+      {
+        path: '/register',
+        element: <RegisterPage />,
+      },
+      {
+        path: '/resend-verification',
+        element: <ResendVerificationPage />,
+      },
+      {
+        path: '/forgot-password',
+        element: <ForgotPasswordPage />,
+      },
+      {
+        path: '/reset-password',
+        element: <ResetPasswordPage />,
+      },
+    ],
+  },
+  {
+    path: '/verify-email',
+    element: <VerifyAccountPage />,
+  },
+  {
+    path: '/verify/:token',
+    element: <VerifyAccountPage />,
+  },
   {
     path: '/',
     element: <RootLayout />,
     children: [
       {
         index: true,
-        element: <HomePage />,
+        element: <FeedPage />,
       },
       {
-        path: 'register',
-        element: <RegisterPage />,
+        path: 'feed',
+        element: <FeedPage />,
       },
       {
-        path: 'login',
-        element: <LoginPage />,
+        path: 'users/:username',
+        element: <UserPublicProfilePage />,
       },
       {
-        path: 'verify/:token',
-        element: <VerifyAccountPage />,
+        path: 'users/:username/lists/:listId',
+        element: <MangaListDetailPage />,
       },
       {
-        path: 'mangas',
-        element: <MangasPage />,
-      },
-      {
-        path: 'mangas/:id',
-        element: <MangaDetailPage />,
-      },
-      {
-        path: 'reviews',
-        element: <ReviewsPage />,
+        path: 'lists/:id',
+        element: <MangaListDetailPage />,
       },
       {
         element: <ProtectedRoute />,
         children: [
           {
-            path: 'mangas/new',
-            element: <MangaFormPage mode="create" />,
+            path: 'home',
+            element: <HomePage />,
           },
           {
-            path: 'mangas/:id/edit',
-            element: <MangaFormPage mode="edit" />,
+            path: 'mangas',
+            element: <MangasPage />,
           },
           {
-            path: 'reviews/new',
-            element: <ReviewFormPage mode="create" />,
+            path: 'mangas/:slug',
+            element: <MangaDetailPage />,
           },
           {
-            path: 'reviews/:id/edit',
-            element: <ReviewFormPage mode="edit" />,
+            path: 'reviews',
+            element: <ReviewsPage />,
           },
           {
-            path: 'my-reviews',
-            element: <MyReviewsPage />,
+            path: 'profile',
+            element: <ProfilePage />,
+          },
+          {
+            path: 'library',
+            element: <LibraryPage />,
+          },
+          {
+            path: 'lists',
+            element: <MyListsPage />,
+          },
+          {
+            path: 'settings/profile',
+            element: <SettingsProfilePage />,
+          },
+        ],
+      },
+      {
+        element: <AdminRoute />,
+        children: [
+          {
+            path: 'admin',
+            element: <AdminLayout />,
+            children: [
+              {
+                index: true,
+                element: <AdminMangasPage />,
+              },
+              {
+                path: 'mangas',
+                element: <AdminMangasPage />,
+              },
+              {
+                path: 'mangas/new',
+                element: <AdminMangaCreatePage />,
+              },
+              {
+                path: 'mangas/:id/edit',
+                element: <AdminMangaEditPage />,
+              },
+            ],
           },
         ],
       },

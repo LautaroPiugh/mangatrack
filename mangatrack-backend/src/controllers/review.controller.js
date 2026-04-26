@@ -21,6 +21,16 @@ const getReviewById = async (req, res) => {
   });
 };
 
+const getRecentReviews = async (req, res) => {
+  const reviews = await reviewService.getRecentReviews(req.query);
+
+  res.status(200).json({
+    success: true,
+    message: 'Reviews recientes obtenidas correctamente.',
+    data: reviews,
+  });
+};
+
 const getMyReviews = async (req, res) => {
   const result = await reviewService.getMyReviews(req.user.id, req.query);
 
@@ -33,17 +43,17 @@ const getMyReviews = async (req, res) => {
 };
 
 const createReview = async (req, res) => {
-  const review = await reviewService.createReview(req.body, req.user.id);
+  const result = await reviewService.createReview(req.body, req.user);
 
-  res.status(201).json({
+  res.status(result.created ? 201 : 200).json({
     success: true,
-    message: 'Review creada correctamente.',
-    data: review,
+    message: result.created ? 'Review creada correctamente.' : 'Review actualizada correctamente.',
+    data: result.review,
   });
 };
 
 const updateReview = async (req, res) => {
-  const review = await reviewService.updateReview(req.params.id, req.body, req.user.id);
+  const review = await reviewService.updateReview(req.params.id, req.body, req.user);
 
   res.status(200).json({
     success: true,
@@ -53,7 +63,7 @@ const updateReview = async (req, res) => {
 };
 
 const deleteReview = async (req, res) => {
-  const review = await reviewService.deleteReview(req.params.id, req.user.id);
+  const review = await reviewService.deleteReview(req.params.id, req.user);
 
   res.status(200).json({
     success: true,
@@ -65,6 +75,7 @@ const deleteReview = async (req, res) => {
 module.exports = {
   getAllReviews,
   getReviewById,
+  getRecentReviews,
   getMyReviews,
   createReview,
   updateReview,

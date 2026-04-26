@@ -12,7 +12,7 @@ const getAllMangas = async (req, res) => {
 };
 
 const getMangaById = async (req, res) => {
-  const manga = await mangaService.getMangaById(req.params.id);
+  const manga = await mangaService.getMangaByIdOrSlug(req.params.idOrSlug, req.user || null);
 
   res.status(200).json({
     success: true,

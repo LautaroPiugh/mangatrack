@@ -1,13 +1,10 @@
 const mongoose = require('mongoose');
-
-const normalizeOptionalString = (value) => {
-  if (typeof value !== 'string') {
-    return value;
-  }
-
-  const normalizedValue = value.trim();
-  return normalizedValue.length > 0 ? normalizedValue : null;
-};
+const {
+  USERNAME_REGEX,
+  USER_ROLES,
+  USER_LANGUAGES,
+  normalizeOptionalString,
+} = require('../utils/user');
 
 const userSchema = new mongoose.Schema(
   {
@@ -17,6 +14,23 @@ const userSchema = new mongoose.Schema(
       trim: true,
       minlength: [2, 'El nombre debe tener al menos 2 caracteres.'],
       maxlength: [60, 'El nombre no puede superar los 60 caracteres.'],
+    },
+    username: {
+      type: String,
+      required: [true, 'El username es obligatorio.'],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      minlength: [3, 'El username debe tener al menos 3 caracteres.'],
+      maxlength: [30, 'El username no puede superar los 30 caracteres.'],
+      match: [USERNAME_REGEX, 'El username solo puede contener letras, numeros, puntos, guiones y guion bajo.'],
+    },
+    displayName: {
+      type: String,
+      default: null,
+      set: normalizeOptionalString,
+      trim: true,
+      maxlength: [60, 'El nombre visible no puede superar los 60 caracteres.'],
     },
     email: {
       type: String,
@@ -29,19 +43,113 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, 'La contraseña es obligatoria.'],
-      minlength: [8, 'La contraseña debe tener al menos 8 caracteres.'],
       select: false,
     },
     isVerified: {
       type: Boolean,
       default: false,
     },
-    verificationToken: {
+    emailVerificationToken: {
       type: String,
       default: null,
       select: false,
       set: normalizeOptionalString,
       index: true,
+    },
+    emailVerificationTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+    lastVerificationEmailSentAt: {
+      type: Date,
+      default: null,
+    },
+    passwordResetToken: {
+      type: String,
+      default: null,
+      select: false,
+      set: normalizeOptionalString,
+      index: true,
+    },
+    passwordResetTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    passwordResetRequestedAt: {
+      type: Date,
+      default: null,
+    },
+    verifiedAt: {
+      type: Date,
+      default: null,
+    },
+    role: {
+      type: String,
+      enum: USER_ROLES,
+      default: 'user',
+    },
+    avatar: {
+      type: String,
+      default: 'avatar_student',
+    },
+    bio: {
+      type: String,
+      default: null,
+      set: normalizeOptionalString,
+      trim: true,
+      maxlength: [280, 'La bio no puede superar los 280 caracteres.'],
+    },
+    preferences: {
+      theme: {
+        type: String,
+        enum: ['dark', 'light'],
+        default: 'dark',
+      },
+      language: {
+        type: String,
+        enum: USER_LANGUAGES,
+        default: 'es',
+      },
+    },
+    favorites: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Manga',
+        },
+      ],
+      default: [],
+    },
+    watchlist: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Manga',
+        },
+      ],
+      default: [],
+    },
+    followers: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      ],
+      default: [],
+    },
+    following: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      ],
+      default: [],
     },
   },
   {
@@ -50,11 +158,18 @@ const userSchema = new mongoose.Schema(
     toJSON: {
       transform(document, returnedObject) {
         delete returnedObject.password;
-        delete returnedObject.verificationToken;
+        delete returnedObject.emailVerificationToken;
+        delete returnedObject.emailVerificationTokenExpiresAt;
+        delete returnedObject.emailVerificationExpires;
+        delete returnedObject.passwordResetToken;
+        delete returnedObject.passwordResetTokenExpiresAt;
         return returnedObject;
       },
     },
   },
 );
+
+userSchema.index({ followers: 1 });
+userSchema.index({ following: 1 });
 
 module.exports = mongoose.model('User', userSchema);

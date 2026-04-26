@@ -37,7 +37,7 @@ Responsabilidades:
 - `services/`: reglas de negocio.
 - `repositories/`: acceso a MongoDB.
 - `middleware/`: auth, validación, 404 y manejo centralizado de errores.
-- `utils/`: JWT, email y errores personalizados.
+- `utils/`: JWT y errores personalizados.
 
 ## Instalación
 
@@ -74,19 +74,30 @@ JWT_EXPIRES_IN=1d
 JWT_ISSUER=MangaTrack API
 JWT_AUDIENCE=MangaTrack Client
 EMAIL_MODE=json
-EMAIL_HOST=
-EMAIL_PORT=587
-EMAIL_SECURE=false
-EMAIL_USER=
-EMAIL_PASS=
 EMAIL_FROM=MangaTrack <no-reply@mangatrack.local>
+FRONTEND_URL=http://localhost:5173
 ```
 
 Notas:
 
 - `EMAIL_MODE=json` no envía realmente correos; los imprime en consola y sirve para desarrollo.
-- Si defines `FRONTEND_URL`, el link de verificación apunta a la pantalla `/verify/:token` del frontend.
-- Si usas SMTP real, cambia `EMAIL_MODE=smtp` y completa las credenciales.
+- Para SMTP real usa `EMAIL_MODE=smtp` junto con `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS` y `EMAIL_FROM`.
+- El link de verificación apunta al frontend en `/verify-email?token=...`.
+- Si usas Gmail SMTP, no uses tu contrasena normal: crea un App Password.
+- No hardcodees ni commitees credenciales reales.
+
+Ejemplo SMTP real:
+
+```env
+EMAIL_MODE=smtp
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=tu_email@gmail.com
+EMAIL_PASS=tu_app_password
+EMAIL_FROM=MangaTrack <tu_email@gmail.com>
+FRONTEND_URL=http://localhost:5173
+```
 
 ## Endpoints
 
@@ -97,7 +108,7 @@ Notas:
 ### Auth
 
 - `POST /api/auth/register`
-- `GET /api/auth/verify/:token`
+- `GET /api/auth/verify-email?token=...`
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 

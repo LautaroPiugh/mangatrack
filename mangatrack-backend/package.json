@@ -6,12 +6,15 @@
   "scripts": {
     "dev": "nodemon --watch src src/server.js",
     "start": "node src/server.js",
-    "check": "node --check src/server.js"
+    "check": "node --check src/server.js",
+    "seed:admin": "node src/scripts/seedAdmin.js",
+    "seed:mangas": "node src/scripts/seedMangas.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.15.2",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -21,7 +24,8 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.5.0",
     "morgan": "^1.10.1",
-    "nodemailer": "^8.0.5"
+    "node-fetch": "^2.7.0",
+    "nodemailer": "^8.0.6"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

@@ -1,70 +1,73 @@
-import { Link, useParams } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 
-import authApi from '../../api/authApi.js'
-import { getApiErrorMessage } from '../../api/axiosClient.js'
-import Alert from '../../components/common/Alert.jsx'
-import Loader from '../../components/common/Loader.jsx'
-import PageHeader from '../../components/common/PageHeader.jsx'
-import useFeedback from '../../hooks/useFeedback.js'
+import authService from '../../services/authService.js'
 
 function VerifyAccountPage() {
-  const { token } = useParams()
-  const { notify } = useFeedback()
-  const hasRequestedVerification = useRef(false)
+  const { token: routeToken } = useParams()
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token') || routeToken || ''
   const [status, setStatus] = useState('loading')
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState('Estamos verificando tu cuenta...')
 
   useEffect(() => {
-    if (hasRequestedVerification.current) {
-      return
-    }
-
-    hasRequestedVerification.current = true
+    let isMounted = true
 
     const verifyAccount = async () => {
-      try {
-        setStatus('loading')
-        const response = await authApi.verifyAccount(token)
-        setMessage(response.message)
-        notify({
-          variant: 'success',
-          title: 'Cuenta verificada',
-          message: 'Ya puedes iniciar sesion en MangaTrack.',
-        })
-        setStatus('success')
-      } catch (requestError) {
-        setMessage(getApiErrorMessage(requestError, 'No se pudo verificar la cuenta.'))
+      if (!token) {
         setStatus('error')
+        setMessage('El link de verificacion es invalido o esta incompleto.')
+        return
+      }
+
+      try {
+        const response = await authService.verifyAccount(token)
+
+        if (!isMounted) {
+          return
+        }
+
+        setStatus('success')
+        setMessage(response.message || 'La cuenta fue verificada correctamente.')
+      } catch (error) {
+        if (!isMounted) {
+          return
+        }
+
+        setStatus('error')
+        setMessage(error.message || 'No se pudo verificar la cuenta.')
       }
     }
 
     verifyAccount()
-  }, [notify, token])
+
+    return () => {
+      isMounted = false
+    }
+  }, [token])
 
   return (
-    <div className="form-page">
-      <PageHeader
-        eyebrow="Verificacion"
-        title="Activacion de cuenta"
-        description="Estamos validando el enlace enviado por correo para habilitar tu acceso."
-      />
-
-      <section className="form-card">
-        {status === 'loading' ? <Loader label="Verificando cuenta..." /> : null}
-        {status === 'success' ? <Alert variant="success">{message}</Alert> : null}
-        {status === 'error' ? <Alert variant="error">{message}</Alert> : null}
-
-        <div className="cluster">
-          <Link to="/login" className="button button-primary">
-            Ir a login
+    <section className="empty-state not-found-state">
+      <span className="empty-state-icon">{status === 'success' ? 'OK' : status === 'error' ? '!' : '...'}</span>
+      <h1>
+        {status === 'success'
+          ? 'Cuenta verificada'
+          : status === 'error'
+            ? 'No se pudo verificar la cuenta'
+            : 'Verificando cuenta'}
+      </h1>
+      <p>{message}</p>
+      <div className="not-found-actions">
+        {status === 'success' ? (
+          <Link to="/login" className="primary-action">
+            Ir a iniciar sesión
           </Link>
-          <Link to="/register" className="button button-ghost">
-            Volver al registro
-          </Link>
-        </div>
-      </section>
-    </div>
+        ) : null}
+        <Link to="/" className="filter-pill">
+          Volver al inicio
+        </Link>
+      </div>
+    </section>
   )
 }
 

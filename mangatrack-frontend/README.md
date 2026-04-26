@@ -71,7 +71,7 @@ src/
 - `/`
 - `/register`
 - `/login`
-- `/verify/:token`
+- `/verify-email?token=...`
 - `/mangas`
 - `/mangas/:id`
 - `/mangas/new`
@@ -87,6 +87,7 @@ src/
 - El token se guarda en `localStorage`
 - Las requests protegidas envían `Authorization: Bearer <token>`
 - Al recargar la app, se revalida la sesión con `GET /auth/me`
+- La verificación de cuenta consume `GET /api/auth/verify-email?token=...`
 
 ## Estado Actual de la UI
 

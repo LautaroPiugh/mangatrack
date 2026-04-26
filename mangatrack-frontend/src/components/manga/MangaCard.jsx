@@ -1,37 +1,181 @@
-import { Link } from 'react-router-dom'
+import ImageWithFallback from '../common/ImageWithFallback.jsx'
+import useFeedback from '../../hooks/useFeedback.js'
+import useI18n from '../../hooks/useI18n.js'
+import useUserLibrary from '../../hooks/useUserLibrary.js'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
-import { getInitials } from '../../utils/formatters.js'
+const getMangaId = (manga) => manga?._id || manga?.id || null
 
 function MangaCard({ manga }) {
-  const shortDescription = manga.description.length > 160
-    ? `${manga.description.slice(0, 157)}...`
-    : manga.description
+  const navigate = useNavigate()
+  const { notify } = useFeedback()
+  const { t } = useI18n()
+  const {
+    isFavorite,
+    isInWatchlist,
+    addFavorite,
+    removeFavorite,
+    addToWatchlist,
+    removeFromWatchlist,
+    isLoading: isLibraryLoading,
+  } = useUserLibrary()
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false)
+  const [isWatchlistLoading, setIsWatchlistLoading] = useState(false)
+
+  const mangaId = getMangaId(manga)
+  const rating = manga.rating ?? manga.averageRating ?? manga.reviewSummary?.averageRating ?? 0
+  const votes = manga.votes ?? manga.ratingsCount ?? manga.reviewSummary?.totalReviews ?? 0
+  const cover = manga.cover || manga.coverUrl || manga.coverImage
+  const metaCopy = votes
+    ? `${Number(votes).toLocaleString('es-AR')} valoraciones`
+    : manga.author || manga.artist || manga.genres?.[0] || manga.genre || 'Manga'
+  const detailSlug = manga.slug || mangaId
+  const favoriteActive = mangaId ? isFavorite(mangaId) : false
+  const watchlistActive = mangaId ? isInWatchlist(mangaId) : false
+
+  const openDetail = () => {
+    if (!detailSlug) {
+      return
+    }
+
+    navigate(`/mangas/${detailSlug}`)
+  }
+
+  const handleFavorite = async (event) => {
+    event.stopPropagation()
+
+    if (!mangaId || isFavoriteLoading || isLibraryLoading) {
+      return
+    }
+
+    setIsFavoriteLoading(true)
+
+    try {
+      if (favoriteActive) {
+        await removeFavorite(mangaId)
+        notify({
+          variant: 'info',
+          title: t('notifications.favoriteRemovedTitle'),
+          message: t('notifications.favoriteRemovedMessage', { title: manga.title }),
+        })
+      } else {
+        await addFavorite(mangaId)
+        notify({
+          variant: 'success',
+          title: t('notifications.favoriteAddedTitle'),
+          message: t('notifications.favoriteAddedMessage', { title: manga.title }),
+        })
+      }
+    } catch (error) {
+      notify({
+        variant: 'error',
+        title: t('notifications.favoritesErrorTitle'),
+        message: error.message || t('notifications.tryAgainMessage'),
+      })
+    } finally {
+      setIsFavoriteLoading(false)
+    }
+  }
+
+  const handleWatchlist = async (event) => {
+    event.stopPropagation()
+
+    if (!mangaId || isWatchlistLoading || isLibraryLoading) {
+      return
+    }
+
+    setIsWatchlistLoading(true)
+
+    try {
+      if (watchlistActive) {
+        await removeFromWatchlist(mangaId)
+        notify({
+          variant: 'info',
+          title: t('notifications.watchlistRemovedTitle'),
+          message: t('notifications.watchlistRemovedMessage', { title: manga.title }),
+        })
+      } else {
+        await addToWatchlist(mangaId)
+        notify({
+          variant: 'success',
+          title: t('notifications.watchlistAddedTitle'),
+          message: t('notifications.watchlistAddedMessage', { title: manga.title }),
+        })
+      }
+    } catch (error) {
+      notify({
+        variant: 'error',
+        title: t('notifications.watchlistErrorTitle'),
+        message: error.message || t('notifications.tryAgainMessage'),
+      })
+    } finally {
+      setIsWatchlistLoading(false)
+    }
+  }
 
   return (
-    <article className="card manga-card">
-      <Link to={`/mangas/${manga._id}`} className="cover-shell">
-        {manga.coverImage ? (
-          <img src={manga.coverImage} alt={`Portada de ${manga.title}`} className="cover-image" />
-        ) : (
-          <div className="cover-fallback">
-            <span>{getInitials(manga.title)}</span>
+    <article
+      className="figma-manga-card figma-manga-card-clickable"
+      role="link"
+      tabIndex={0}
+      onClick={openDetail}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          openDetail()
+        }
+      }}
+    >
+      <div className="figma-poster">
+        <ImageWithFallback
+          src={cover}
+          alt={manga.title}
+          className="figma-poster-image"
+          loading="lazy"
+        />
+
+        {rating ? (
+          <div className="figma-rating-badge">
+            <span>★</span>
+            {Number(rating).toFixed(1)}
           </div>
-        )}
-      </Link>
+        ) : null}
 
-      <div className="card-content">
-        <div className="card-copy">
-          <span className="card-kicker">{manga.genre}</span>
-          <h3>{manga.title}</h3>
-          <p className="card-meta">por {manga.author}</p>
-          <p>{shortDescription}</p>
-        </div>
+        <div className="figma-poster-overlay">
+          <div className="figma-actions">
+            <button
+              type="button"
+              className={favoriteActive ? 'figma-action figma-action-active' : 'figma-action'}
+              onClick={handleFavorite}
+              aria-label={favoriteActive ? t('notifications.favoriteRemovedTitle') : t('notifications.favoriteAddedTitle')}
+              aria-pressed={favoriteActive}
+              disabled={isFavoriteLoading || isLibraryLoading}
+            >
+              {isFavoriteLoading ? '…' : '♥'}
+            </button>
+            <button
+              type="button"
+              className={watchlistActive ? 'figma-action figma-action-pending' : 'figma-action'}
+              onClick={handleWatchlist}
+              aria-label={watchlistActive ? t('notifications.watchlistRemovedTitle') : t('notifications.watchlistAddedTitle')}
+              aria-pressed={watchlistActive}
+              disabled={isWatchlistLoading || isLibraryLoading}
+            >
+              {isWatchlistLoading ? '…' : '＋'}
+            </button>
+          </div>
 
-        <div className="card-actions">
-          <Link to={`/mangas/${manga._id}`} className="button button-secondary">
-            Ver detalle
-          </Link>
+          <div className="figma-card-flags" aria-live="polite">
+            {favoriteActive ? <span className="figma-card-flag">{t('common.favorites')}</span> : null}
+            {watchlistActive ? <span className="figma-card-flag figma-card-flag-pending">{t('common.watchlist')}</span> : null}
+          </div>
         </div>
+      </div>
+
+      <div className="figma-card-copy">
+        <h3>{manga.title}</h3>
+        <p>{metaCopy}</p>
       </div>
     </article>
   )

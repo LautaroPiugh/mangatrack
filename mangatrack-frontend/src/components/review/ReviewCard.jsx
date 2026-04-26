@@ -1,62 +1,49 @@
 import { Link } from 'react-router-dom'
 
-import { formatDate, formatDateTime } from '../../utils/formatters.js'
-import RatingStars from './RatingStars.jsx'
-import StatusBadge from './StatusBadge.jsx'
+import useI18n from '../../hooks/useI18n.js'
+import { formatRelativeDate } from '../../utils/date.js'
+import StarRatingDisplay from './StarRatingDisplay.jsx'
+import UserAvatar from '../user/UserAvatar.jsx'
 
-function ReviewCard({
-  review,
-  currentUserId,
-  onDelete,
-  deletingId,
-  showManga = true,
-  compact = false,
-}) {
-  const isOwner = currentUserId && review.user?._id === currentUserId
+function ReviewCard({ review, actions = null }) {
+  const { t } = useI18n()
+  const user = review.user?.displayName || review.user?.username || review.user?.name || review.user || t('reviews.userFallback')
+  const username = review.user?.username || ''
+  const manga = review.manga?.title || review.manga || t('reviews.mangaFallback')
+  const mangaSlug = review.manga?.slug || ''
+  const rating = review.rating || 0
+  const content = review.content || review.comment || ''
+  const date = review.date || formatRelativeDate(review.createdAt || review.updatedAt)
 
   return (
-    <article className={`card review-card ${compact ? 'review-card-compact' : ''}`}>
-      <div className="review-header">
-        <div>
-          <div className="review-rating-line">
-            <RatingStars rating={review.rating} />
-            <span className="review-rating-value">{review.rating}/5</span>
-          </div>
+    <article className="figma-review-card">
+      <div className="figma-review-avatar">
+        <UserAvatar user={review.user} size={48} />
+      </div>
 
-          <div className="review-meta-line">
-            <StatusBadge status={review.status} />
-            <span>{formatDateTime(review.createdAt)}</span>
+      <div className="figma-review-content">
+        <div className="figma-review-head">
+          <div>
+            <h3>
+              {username ? <Link className="review-user-link" to={`/users/${username}`}>{user}</Link> : user}
+            </h3>
+            <p>
+              {t('reviews.reviewOf')}{' '}
+              {mangaSlug ? <Link className="review-user-link" to={`/mangas/${mangaSlug}`}>{manga}</Link> : <span>{manga}</span>}
+            </p>
+          </div>
+          <div className="figma-review-meta">
+            <time>{date}</time>
+            {actions ? <div className="figma-review-actions">{actions}</div> : null}
           </div>
         </div>
 
-        {isOwner ? (
-          <div className="inline-actions">
-            <Link to={`/reviews/${review._id}/edit`} className="button button-ghost">
-              Editar
-            </Link>
-            <button
-              type="button"
-              className="button button-danger"
-              onClick={() => onDelete?.(review)}
-              disabled={deletingId === review._id}
-            >
-              {deletingId === review._id ? 'Eliminando...' : 'Eliminar'}
-            </button>
-          </div>
-        ) : null}
-      </div>
+        <div className="figma-review-stars">
+          <StarRatingDisplay value={rating} size="sm" />
+          <span className="figma-review-rating-value">{Number(rating).toFixed(1)}</span>
+        </div>
 
-      {showManga && review.manga ? (
-        <Link to={`/mangas/${review.manga._id}`} className="review-linked-title">
-          {review.manga.title}
-        </Link>
-      ) : null}
-
-      <p className="review-comment">{review.comment}</p>
-
-      <div className="review-footer">
-        <span>por {review.user?.name || 'Usuario'}</span>
-        <span>{formatDate(review.updatedAt)}</span>
+        {content ? <p className="figma-review-comment">{content}</p> : null}
       </div>
     </article>
   )

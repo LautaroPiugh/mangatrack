@@ -5,13 +5,17 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const buildMangaFilters = (filters = {}) => {
   const query = {};
 
-  if (filters.search) {
-    const regex = new RegExp(escapeRegex(filters.search.trim()), 'i');
-    query.$or = [{ title: regex }, { author: regex }, { genre: regex }];
+  if (filters.q) {
+    const regex = new RegExp(escapeRegex(filters.q.trim()), 'i');
+    query.$or = [{ title: regex }, { author: regex }, { artist: regex }, { genres: regex }];
   }
 
   if (filters.genre) {
-    query.genre = new RegExp(`^${escapeRegex(filters.genre.trim())}$`, 'i');
+    query.genres = new RegExp(`^${escapeRegex(filters.genre.trim())}$`, 'i');
+  }
+
+  if (filters.status) {
+    query.status = filters.status;
   }
 
   if (filters.createdBy) {
@@ -25,7 +29,7 @@ const applyMangaOptions = (query, options = {}) => {
   query.sort(options.sort || { createdAt: -1 });
 
   if (options.populateCreatedBy !== false) {
-    query.populate({ path: 'createdBy', select: 'name email isVerified' });
+    query.populate({ path: 'createdBy', select: 'name username email role' });
   }
 
   if (Number.isInteger(options.skip) && options.skip >= 0) {
@@ -45,13 +49,77 @@ const findAll = (filters = {}, options = {}) => {
   return query.exec();
 };
 
+const findBySlug = (slug, options = {}) => {
+  const query = Manga.findOne({ slug });
+  applyMangaOptions(query, { populateCreatedBy: options.populateCreatedBy });
+  return query.exec();
+};
+
+const findByIdOrSlug = (idOrSlug, options = {}) => {
+  if (/^[a-f\d]{24}$/i.test(idOrSlug)) {
+    return findById(idOrSlug, options);
+  }
+
+  return findBySlug(idOrSlug, options);
+};
+
 const findById = (id, options = {}) => {
   const query = Manga.findById(id);
   applyMangaOptions(query, { populateCreatedBy: options.populateCreatedBy });
   return query.exec();
 };
 
+const findByNormalizedTitle = (normalizedTitle, options = {}) => {
+  const query = Manga.findOne({ normalizedTitle });
+  applyMangaOptions(query, { populateCreatedBy: options.populateCreatedBy });
+  return query.exec();
+};
+
+const findByExternalSourceAndId = (source, externalId, options = {}) => {
+  const query = Manga.findOne({
+    'external.source': source,
+    'external.externalId': externalId,
+  });
+
+  applyMangaOptions(query, { populateCreatedBy: options.populateCreatedBy });
+
+  return query.exec();
+};
+
+const findImportCandidate = (fingerprint = {}, options = {}) => {
+  const filters = [];
+
+  if (fingerprint.externalSource && Number.isInteger(fingerprint.externalId)) {
+    filters.push({
+      'external.source': fingerprint.externalSource,
+      'external.externalId': fingerprint.externalId,
+    });
+  }
+
+  if (fingerprint.slug) {
+    filters.push({ slug: fingerprint.slug });
+  }
+
+  if (fingerprint.normalizedTitle) {
+    filters.push({ normalizedTitle: fingerprint.normalizedTitle });
+  }
+
+  if (fingerprint.title) {
+    filters.push({ title: new RegExp(`^${escapeRegex(fingerprint.title.trim())}$`, 'i') });
+  }
+
+  if (filters.length === 0) {
+    return Promise.resolve(null);
+  }
+
+  const query = Manga.findOne({ $or: filters });
+  applyMangaOptions(query, { populateCreatedBy: options.populateCreatedBy });
+
+  return query.exec();
+};
+
 const existsById = async (id) => Boolean(await Manga.exists({ _id: id }));
+const existsBySlug = async (slug) => Boolean(await Manga.exists({ slug }));
 
 const countDocuments = (filters = {}) => Manga.countDocuments(buildMangaFilters(filters));
 
@@ -72,14 +140,33 @@ const updateById = (id, updateData, options = {}) => {
   return query.exec();
 };
 
+const updateRatingSummary = (id, { averageRating, ratingsCount }) => Manga.findByIdAndUpdate(
+  id,
+  {
+    averageRating,
+    ratingsCount,
+  },
+  {
+    new: true,
+    runValidators: true,
+  },
+).exec();
+
 const deleteById = (id) => Manga.findByIdAndDelete(id).exec();
 
 module.exports = {
   findAll,
   findById,
+  findBySlug,
+  findByIdOrSlug,
+  findByNormalizedTitle,
+  findByExternalSourceAndId,
+  findImportCandidate,
   existsById,
+  existsBySlug,
   countDocuments,
   create,
   updateById,
+  updateRatingSummary,
   deleteById,
 };
