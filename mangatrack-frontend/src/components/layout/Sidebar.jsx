@@ -5,11 +5,15 @@ import ConfirmDialog from '../common/ConfirmDialog.jsx'
 import useFeedback from '../../hooks/useFeedback.js'
 import useI18n from '../../hooks/useI18n.js'
 
-function Sidebar({ isCollapsed, onToggle, isAuthenticated, onLogout }) {
+function Sidebar({ hideSidebar = false, isCollapsed, onToggle, isAuthenticated, onLogout }) {
   const navigate = useNavigate()
   const { notify } = useFeedback()
   const { t } = useI18n()
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+
+  if (hideSidebar) {
+    return null
+  }
   const navItems = [
     { icon: '↻', label: t('nav.feed'), path: '/' },
     ...(isAuthenticated ? [{ icon: '⌂', label: t('nav.dashboard'), path: '/home' }] : []),

@@ -167,6 +167,14 @@ p {
   transition: padding-left 0.3s ease;
 }
 
+.app-shell-admin {
+  padding-left: 0;
+}
+
+.app-shell-admin.app-shell-collapsed {
+  padding-left: 0;
+}
+
 .app-shell-collapsed {
   padding-left: var(--sidebar-collapsed);
 }
@@ -3007,11 +3015,22 @@ p {
 
 @media (max-width: 768px) {
   .admin-sidebar {
-    width: var(--sidebar-collapsed);
+    position: static;
+    width: 100%;
+    height: auto;
+    top: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 20px;
   }
 
   .admin-main {
-    margin-left: var(--sidebar-collapsed);
+    margin-left: 0;
+    padding: 16px;
+  }
+
+  .admin-layout {
+    min-height: auto;
   }
 
   .admin-mangas-header {
