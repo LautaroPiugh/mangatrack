@@ -1,31 +1,42 @@
-import { request, unwrapData } from './api.js'
+import axiosClient from '../api/axiosClient.js'
+import { getPayloadData, runRequest } from './http.js'
 
 export const userLibraryService = {
   async getFavorites() {
-    return unwrapData(await request('/users/me/favorites'))
+    return runRequest(async () => {
+      const response = await axiosClient.get('/users/me/favorites')
+      return getPayloadData(response) || []
+    }, 'No se pudieron cargar tus favoritos.')
   },
   async addFavorite(mangaId) {
-    return unwrapData(await request(`/users/me/favorites/${mangaId}`, {
-      method: 'POST',
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.post(`/users/me/favorites/${mangaId}`)
+      return getPayloadData(response) || []
+    }, 'No se pudo agregar el manga a favoritos.')
   },
   async removeFavorite(mangaId) {
-    return unwrapData(await request(`/users/me/favorites/${mangaId}`, {
-      method: 'DELETE',
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.delete(`/users/me/favorites/${mangaId}`)
+      return getPayloadData(response) || []
+    }, 'No se pudo quitar el manga de favoritos.')
   },
   async getWatchlist() {
-    return unwrapData(await request('/users/me/watchlist'))
+    return runRequest(async () => {
+      const response = await axiosClient.get('/users/me/watchlist')
+      return getPayloadData(response) || []
+    }, 'No se pudieron cargar tus pendientes.')
   },
   async addToWatchlist(mangaId) {
-    return unwrapData(await request(`/users/me/watchlist/${mangaId}`, {
-      method: 'POST',
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.post(`/users/me/watchlist/${mangaId}`)
+      return getPayloadData(response) || []
+    }, 'No se pudo agregar el manga a pendientes.')
   },
   async removeFromWatchlist(mangaId) {
-    return unwrapData(await request(`/users/me/watchlist/${mangaId}`, {
-      method: 'DELETE',
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.delete(`/users/me/watchlist/${mangaId}`)
+      return getPayloadData(response) || []
+    }, 'No se pudo quitar el manga de pendientes.')
   },
 }
 

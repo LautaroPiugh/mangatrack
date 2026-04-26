@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import useFeedback from '../../hooks/useFeedback.js'
+import useI18n from '../../hooks/useI18n.js'
 import mangaService from '../../services/mangaService.js'
 
 const ADMIN_MANGAS_PAGE_SIZE = 50
@@ -9,6 +10,7 @@ const ADMIN_MANGAS_PAGE_SIZE = 50
 function AdminMangasPage() {
   const navigate = useNavigate()
   const { notify } = useFeedback()
+  const { t } = useI18n()
   const [mangas, setMangas] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -55,7 +57,7 @@ function AdminMangasPage() {
           return
         }
 
-        setError('Error al cargar mangas')
+        setError(t('adminMangas.loadErrorTitle'))
       } finally {
         if (isMounted) {
           setIsLoading(false)
@@ -68,7 +70,7 @@ function AdminMangasPage() {
     return () => {
       isMounted = false
     }
-  }, [fetchMangas])
+  }, [fetchMangas, t])
 
   const loadMangas = async (searchQuery = '') => {
     setIsSearching(true)
@@ -78,7 +80,7 @@ function AdminMangasPage() {
       const items = await fetchMangas(searchQuery)
       setMangas(items)
     } catch {
-      setError('Error al cargar mangas')
+      setError(t('adminMangas.loadErrorTitle'))
     } finally {
       setIsLoading(false)
       setIsSearching(false)
@@ -115,16 +117,16 @@ function AdminMangasPage() {
       setMangas((currentMangas) => currentMangas.filter((manga) => manga._id !== mangaPendingDelete._id))
       notify({
         variant: 'success',
-        title: 'Manga eliminado',
-        message: `"${mangaPendingDelete.title}" se eliminó correctamente.`,
+        title: t('adminMangas.deleteSuccessTitle'),
+        message: t('adminMangas.deleteSuccessMessage', { title: mangaPendingDelete.title }),
       })
       setMangaPendingDelete(null)
     } catch (deleteError) {
-      const errorMessage = deleteError.message || 'Error al eliminar manga'
+      const errorMessage = deleteError.message || t('adminMangas.deleteErrorMessage')
       setError(errorMessage)
       notify({
         variant: 'error',
-        title: 'No se pudo eliminar',
+        title: t('adminMangas.deleteErrorTitle'),
         message: errorMessage,
       })
     } finally {
@@ -134,10 +136,10 @@ function AdminMangasPage() {
 
   const getStatusLabel = (status) => {
     const labels = {
-      ongoing: 'En publicación',
-      completed: 'Finalizado',
-      hiatus: 'En pausa',
-      cancelled: 'Cancelado'
+      ongoing: t('mangaStatuses.ongoing'),
+      completed: t('mangaStatuses.completed'),
+      hiatus: t('mangaStatuses.hiatus'),
+      cancelled: t('mangaStatuses.cancelled')
     }
     return labels[status] || status
   }
@@ -146,8 +148,8 @@ function AdminMangasPage() {
     return (
       <div className="admin-mangas-page">
         <div className="admin-page-header">
-          <h1>Gestión de mangas</h1>
-          <p>Cargando mangas...</p>
+          <h1>{t('adminMangas.title')}</h1>
+          <p>{t('adminMangas.loadingMessage')}</p>
         </div>
       </div>
     )
@@ -156,8 +158,8 @@ function AdminMangasPage() {
   return (
     <div className="admin-mangas-page">
       <div className="admin-page-header">
-        <h1>Gestión de mangas</h1>
-        <p>Administra todos los mangas de la plataforma</p>
+        <h1>{t('adminMangas.title')}</h1>
+        <p>{t('adminMangas.subtitle')}</p>
       </div>
 
       {error && (
@@ -170,7 +172,7 @@ function AdminMangasPage() {
         <form onSubmit={handleSearch} className="admin-mangas-search">
           <input
             type="text"
-            placeholder="Buscar por título..."
+            placeholder={t('adminMangas.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="admin-mangas-search-input"
@@ -181,21 +183,21 @@ function AdminMangasPage() {
             className="admin-mangas-create-btn"
             style={{ background: 'var(--blue)' }}
           >
-            {isSearching ? 'Buscando...' : 'Buscar'}
+            {isSearching ? t('common.searching') : t('adminMangas.searchButton')}
           </button>
         </form>
 
         <Link to="/admin/mangas/new" className="admin-mangas-create-btn">
-          Nuevo manga
+          {t('admin.newMangaTitle')}
         </Link>
       </div>
 
       {mangas.length === 0 ? (
         <div className="admin-mangas-empty">
-          <p>No se encontraron mangas</p>
+          <p>{t('adminMangas.emptyTitle')}</p>
           {search && (
             <p style={{ color: 'var(--muted)', marginTop: '8px' }}>
-              Prueba con una búsqueda diferente o <button
+              {t('mangasPage.emptyMessage')} <button
                 onClick={() => {
                   setSearch('')
                   loadMangas('')
@@ -208,7 +210,7 @@ function AdminMangasPage() {
                   textDecoration: 'underline'
                 }}
               >
-                ver todos los mangas
+                {t('adminMangas.seeAll')}
               </button>
             </p>
           )}
@@ -239,13 +241,13 @@ function AdminMangasPage() {
                     onClick={() => navigate(`/admin/mangas/${manga._id}/edit`)}
                     className="admin-manga-card-btn edit"
                   >
-                    Editar
+                    {t('common.edit')}
                   </button>
                   <button
                     onClick={() => openDeleteDialog(manga)}
                     className="admin-manga-card-btn delete"
                   >
-                    Eliminar
+                    {t('common.delete')}
                   </button>
                 </div>
               </div>
@@ -264,12 +266,12 @@ function AdminMangasPage() {
             aria-describedby="admin-delete-description"
             onClick={(event) => event.stopPropagation()}
           >
-            <span className="admin-confirm-eyebrow">Eliminar manga</span>
+            <span className="admin-confirm-eyebrow">{t('adminMangas.deleteEyebrow')}</span>
             <h2 id="admin-delete-title" className="admin-confirm-title">
-              Confirmá esta acción
+              {t('adminMangas.deleteHeading')}
             </h2>
             <p id="admin-delete-description" className="admin-confirm-copy">
-              Vas a eliminar <strong>{mangaPendingDelete.title}</strong>. Esta acción no se puede deshacer.
+              {t('adminMangas.deleteDescription', { title: mangaPendingDelete.title })}
             </p>
             <div className="admin-confirm-actions">
               <button
@@ -278,7 +280,7 @@ function AdminMangasPage() {
                 onClick={closeDeleteDialog}
                 disabled={isDeleting}
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -286,7 +288,7 @@ function AdminMangasPage() {
                 onClick={handleDelete}
                 disabled={isDeleting}
               >
-                {isDeleting ? 'Eliminando...' : 'Eliminar manga'}
+                {isDeleting ? t('common.processing') : t('adminMangas.deleteAction')}
               </button>
             </div>
           </div>

@@ -1,27 +1,39 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
-const getDisplayName = (user) => (
-  user?.username
+import ConfirmDialog from '../common/ConfirmDialog.jsx'
+import UserAvatar from '../user/UserAvatar.jsx'
+import useFeedback from '../../hooks/useFeedback.js'
+import useI18n from '../../hooks/useI18n.js'
+
+const getDisplayName = (user, fallbackLabel) => (
+  user?.displayName
+  || user?.username
   || user?.name
   || user?.email
-  || 'Mi cuenta'
+  || fallbackLabel
 )
 
-const getInitial = (user) => (
-  getDisplayName(user).trim().slice(0, 1).toUpperCase() || 'M'
-)
+const getMenuItems = (user, t) => {
+  if (!user) {
+    return [
+      { label: t('nav.login'), path: '/login' },
+      { label: t('nav.register'), path: '/register' },
+    ]
+  }
 
-const getMenuItems = (user) => {
   const items = [
-    { label: 'Mi perfil', path: '/profile' },
-    { label: 'Mi biblioteca', path: '/library' },
-    { label: 'Favoritos', path: '/library?tab=favorites' },
-    { label: 'Pendientes', path: '/library?tab=watchlist' },
+    { label: t('nav.myProfile'), path: '/profile' },
+    ...(user?.username ? [{ label: t('nav.publicProfile'), path: `/users/${user.username}` }] : []),
+    { label: t('nav.library'), path: '/library' },
+    { label: t('nav.myLists'), path: '/lists' },
+    { label: t('nav.settings'), path: '/settings/profile' },
+    { label: t('nav.favorites'), path: '/library?tab=favorites' },
+    { label: t('nav.watchlist'), path: '/library?tab=watchlist' },
   ]
 
   if (user?.role === 'admin') {
-    items.unshift({ label: 'Panel admin', path: '/admin' })
+    items.unshift({ label: t('nav.adminPanel'), path: '/admin' })
   }
 
   return items
@@ -29,10 +41,14 @@ const getMenuItems = (user) => {
 
 function UserMenu({ user, isAuthenticated = false, onLogout }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const menuRef = useRef(null)
   const navigate = useNavigate()
   const location = useLocation()
-  const displayName = isAuthenticated ? getDisplayName(user) : 'Mi cuenta'
+  const { notify } = useFeedback()
+  const { t } = useI18n()
+  const fallbackLabel = t('nav.myAccount')
+  const displayName = isAuthenticated ? getDisplayName(user, fallbackLabel) : fallbackLabel
   const secondaryLine = user?.email || user?.name
 
   useEffect(() => {
@@ -57,7 +73,17 @@ function UserMenu({ user, isAuthenticated = false, onLogout }) {
 
   const handleLogout = () => {
     setIsMenuOpen(false)
+    setShowLogoutConfirm(true)
+  }
+
+  const handleConfirmLogout = () => {
+    setShowLogoutConfirm(false)
     onLogout?.()
+    notify({
+      variant: 'info',
+      title: t('notifications.logoutTitle'),
+      message: t('notifications.logoutMessage'),
+    })
     if (location.pathname !== '/login') {
       navigate('/login')
     }
@@ -76,12 +102,16 @@ function UserMenu({ user, isAuthenticated = false, onLogout }) {
           <strong>{displayName}</strong>
           {secondaryLine ? <small>{secondaryLine}</small> : null}
         </span>
-        <span className="avatar avatar-button">{isAuthenticated ? getInitial(user) : 'M'}</span>
+        <span className="avatar avatar-button">
+          {isAuthenticated
+            ? <UserAvatar user={user} size={32} />
+            : 'M'}
+        </span>
       </button>
 
       {isMenuOpen ? (
         <div className="user-dropdown" role="menu">
-          {getMenuItems(user).map((item) => (
+          {getMenuItems(user, t).map((item) => (
             <button
               key={item.path}
               type="button"
@@ -91,12 +121,27 @@ function UserMenu({ user, isAuthenticated = false, onLogout }) {
               {item.label}
             </button>
           ))}
-          <div className="user-dropdown-divider" />
-          <button type="button" role="menuitem" className="user-dropdown-danger" onClick={handleLogout}>
-            Cerrar sesión
-          </button>
+          {isAuthenticated ? (
+            <>
+              <div className="user-dropdown-divider" />
+              <button type="button" role="menuitem" className="user-dropdown-danger" onClick={handleLogout}>
+                {t('nav.logout')}
+              </button>
+            </>
+          ) : null}
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={showLogoutConfirm}
+        title={t('confirmDialog.logoutTitle')}
+        description={t('confirmDialog.logoutDescription')}
+        confirmLabel={t('confirmDialog.logoutConfirm')}
+        cancelLabel={t('common.cancel')}
+        variant="default"
+        onConfirm={handleConfirmLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </div>
   )
 }
@@ -104,6 +149,8 @@ function UserMenu({ user, isAuthenticated = false, onLogout }) {
 function Header({ user, isAuthenticated = false, onLogout }) {
   const [searchQuery, setSearchQuery] = useState('')
   const navigate = useNavigate()
+  const location = useLocation()
+  const { t } = useI18n()
 
   const handleSearch = (event) => {
     event.preventDefault()
@@ -130,8 +177,8 @@ function Header({ user, isAuthenticated = false, onLogout }) {
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Buscar mangas..."
-              aria-label="Buscar mangas"
+              placeholder={t('header.searchPlaceholder')}
+              aria-label={t('header.searchLabel')}
             />
           </form>
         </div>

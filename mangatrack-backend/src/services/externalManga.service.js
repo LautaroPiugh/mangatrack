@@ -16,6 +16,12 @@ const MAX_LIMIT = 25;
 const DEFAULT_PAGE = 1;
 const DEFAULT_TIMEOUT_MS = 10000;
 const CURL_MAX_BUFFER = 2 * 1024 * 1024;
+const CACHE_TTL = {
+  search: 10 * 60 * 1000,
+  genres: 24 * 60 * 60 * 1000,
+  detail: 30 * 60 * 1000,
+  top: 30 * 60 * 1000,
+};
 const execFileAsync = promisify(execFile);
 
 const jikanClient = axios.create({
@@ -36,6 +42,36 @@ const JIKAN_STATUS_TO_INTERNAL = {
   cancelled: 'cancelled',
   upcoming: 'ongoing',
 };
+
+const createMemoryCache = () => {
+  const store = new Map();
+
+  return {
+    get(key) {
+      const entry = store.get(key);
+
+      if (!entry) {
+        return null;
+      }
+
+      if (entry.expiresAt <= Date.now()) {
+        store.delete(key);
+        return null;
+      }
+
+      return entry.value;
+    },
+    set(key, value, ttlMs) {
+      store.set(key, {
+        value,
+        expiresAt: Date.now() + ttlMs,
+      });
+      return value;
+    },
+  };
+};
+
+const responseCache = createMemoryCache();
 
 const clampLimit = (value) => Math.min(
   Math.max(Number.parseInt(value, 10) || DEFAULT_LIMIT, 1),
@@ -146,9 +182,11 @@ const normalizeGenreList = (genres = []) => {
 };
 
 const normalizePaginationMeta = (pagination = {}) => ({
+  currentPage: pagination.current_page || DEFAULT_PAGE,
   page: pagination.current_page || DEFAULT_PAGE,
   limit: pagination.items?.per_page || DEFAULT_LIMIT,
   total: pagination.items?.total ?? null,
+  lastVisiblePage: pagination.last_visible_page || 1,
   totalPages: pagination.last_visible_page || 1,
   hasNextPage: Boolean(pagination.has_next_page),
 });
@@ -252,6 +290,22 @@ const buildJikanUrl = (path, params = {}) => {
   return requestUrl.toString();
 };
 
+const buildCacheKey = (scope, path, params = {}) => {
+  const normalizedEntries = Object.entries(params)
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+
+  return JSON.stringify([scope, path, normalizedEntries]);
+};
+
+const getCachedResponse = (scope, path, params = {}) => (
+  responseCache.get(buildCacheKey(scope, path, params))
+);
+
+const setCachedResponse = (scope, path, params = {}, payload, ttlMs) => (
+  responseCache.set(buildCacheKey(scope, path, params), payload, ttlMs)
+);
+
 const normalizeJikanError = (status, message) => {
   if (status === 400 || status === 422) {
     throw new BadRequestError(message);
@@ -308,16 +362,33 @@ const requestJikanWithCurl = async (path, params = {}) => {
   return payload;
 };
 
-const requestJikan = async (path, params = {}) => {
+const requestJikanWithAxios = async (path, params = {}) => {
+  console.info('[external-manga] jikan request', {
+    path,
+    params,
+  });
+
+  const response = await jikanClient.get(path, { params });
+  return response.data;
+};
+
+const requestJikan = async (path, params = {}, { cacheScope = null, cacheTtl = 0 } = {}) => {
+  if (cacheScope && cacheTtl > 0) {
+    const cachedPayload = getCachedResponse(cacheScope, path, params);
+
+    if (cachedPayload) {
+      return cachedPayload;
+    }
+  }
+
   try {
-    console.info('[external-manga] jikan request', {
-      path,
-      params,
-    });
+    const payload = await requestJikanWithAxios(path, params);
 
-    const response = await jikanClient.get(path, { params });
+    if (cacheScope && cacheTtl > 0) {
+      return setCachedResponse(cacheScope, path, params, payload, cacheTtl);
+    }
 
-    return response.data;
+    return payload;
   } catch (error) {
     const status = error.response?.status;
     const upstreamMessage = error.response?.data?.message || error.message || 'No se pudo consultar Jikan.';
@@ -325,7 +396,13 @@ const requestJikan = async (path, params = {}) => {
 
     if (!error.response) {
       try {
-        return await requestJikanWithCurl(path, params);
+        const payload = await requestJikanWithCurl(path, params);
+
+        if (cacheScope && cacheTtl > 0) {
+          return setCachedResponse(cacheScope, path, params, payload, cacheTtl);
+        }
+
+        return payload;
       } catch (curlError) {
         if (curlError instanceof BadRequestError || curlError instanceof NotFoundError || curlError instanceof TooManyRequestsError || curlError instanceof ServiceUnavailableError) {
           throw curlError;
@@ -342,11 +419,18 @@ const requestJikan = async (path, params = {}) => {
 const searchExternalMangas = async (filters = {}) => {
   ensureSearchCriteria(filters);
 
-  const payload = await requestJikan('/manga', buildSearchParams(filters));
+  const searchParams = buildSearchParams(filters);
+  const payload = await requestJikan('/manga', searchParams, {
+    cacheScope: 'search',
+    cacheTtl: CACHE_TTL.search,
+  });
+
+  const pagination = normalizePaginationMeta(payload.pagination);
 
   return {
     items: (payload.data || []).map(normalizeExternalManga),
-    meta: normalizePaginationMeta(payload.pagination),
+    meta: pagination,
+    pagination,
   };
 };
 
@@ -364,16 +448,25 @@ const getTopExternalMangas = async (filters = {}) => {
     params.type = filters.type;
   }
 
-  const payload = await requestJikan('/top/manga', params);
+  const payload = await requestJikan('/top/manga', params, {
+    cacheScope: 'top',
+    cacheTtl: CACHE_TTL.top,
+  });
+
+  const pagination = normalizePaginationMeta(payload.pagination);
 
   return {
     items: (payload.data || []).map(normalizeExternalManga),
-    meta: normalizePaginationMeta(payload.pagination),
+    meta: pagination,
+    pagination,
   };
 };
 
 const getExternalMangaGenres = async () => {
-  const payload = await requestJikan('/genres/manga');
+  const payload = await requestJikan('/genres/manga', {}, {
+    cacheScope: 'genres',
+    cacheTtl: CACHE_TTL.genres,
+  });
 
   return normalizeGenreList(payload.data || []);
 };
@@ -385,7 +478,10 @@ const getExternalMangaById = async (malId) => {
     throw new BadRequestError('Debes indicar un MAL ID válido.');
   }
 
-  const payload = await requestJikan(`/manga/${parsedMalId}/full`);
+  const payload = await requestJikan(`/manga/${parsedMalId}/full`, {}, {
+    cacheScope: 'detail',
+    cacheTtl: CACHE_TTL.detail,
+  });
 
   if (!payload.data) {
     throw new NotFoundError('No se encontró el manga solicitado en Jikan.');

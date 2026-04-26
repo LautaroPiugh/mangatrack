@@ -1,64 +1,57 @@
-import axiosClient, { getApiErrorMessage } from '../api/axiosClient.js'
-
-const buildParams = (params = {}) => Object.fromEntries(
-  Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ''),
-)
+import { buildParams, runRequest } from './http.js'
+import axiosClient from '../api/axiosClient.js'
 
 const searchExternalMangas = async (filters = {}) => {
-  try {
+  return runRequest(async () => {
     const response = await axiosClient.get('/mangas/admin/external/search', {
       params: buildParams(filters),
     })
 
+    const pagination = response.data.pagination || response.data.meta || null
+
     return {
       items: response.data.data || [],
-      meta: response.data.meta || null,
+      meta: response.data.meta || pagination,
+      pagination,
     }
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error, 'No se pudieron buscar mangas externos.'))
-  }
+  }, 'No se pudieron buscar mangas externos.')
 }
 
 const getTopExternalMangas = async (filters = {}) => {
-  try {
+  return runRequest(async () => {
     const response = await axiosClient.get('/mangas/admin/external/top', {
       params: buildParams(filters),
     })
 
+    const pagination = response.data.pagination || response.data.meta || null
+
     return {
       items: response.data.data || [],
-      meta: response.data.meta || null,
+      meta: response.data.meta || pagination,
+      pagination,
     }
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error, 'No se pudieron cargar mangas destacados.'))
-  }
+  }, 'No se pudieron cargar mangas destacados.')
 }
 
 const getExternalMangaGenres = async () => {
-  try {
+  return runRequest(async () => {
     const response = await axiosClient.get('/mangas/admin/external/genres')
     return response.data.data || []
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error, 'No se pudieron cargar los géneros externos.'))
-  }
+  }, 'No se pudieron cargar los géneros externos.')
 }
 
 const getExternalMangaById = async (malId) => {
-  try {
+  return runRequest(async () => {
     const response = await axiosClient.get(`/mangas/admin/external/${malId}`)
     return response.data.data
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error, 'No se pudo cargar el detalle del manga externo.'))
-  }
+  }, 'No se pudo cargar el detalle del manga externo.')
 }
 
 const importExternalManga = async (payload) => {
-  try {
+  return runRequest(async () => {
     const response = await axiosClient.post('/mangas/admin/external/import', payload)
     return response.data.data
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error, 'No se pudo importar el manga.'))
-  }
+  }, 'No se pudo importar el manga.')
 }
 
 export default {

@@ -1,11 +1,6 @@
 import { useState } from 'react'
 
-const statusOptions = [
-  { value: 'ongoing', label: 'En publicación' },
-  { value: 'completed', label: 'Finalizado' },
-  { value: 'hiatus', label: 'En pausa' },
-  { value: 'cancelled', label: 'Cancelado' },
-]
+import useI18n from '../../hooks/useI18n.js'
 
 const formatDateInput = (value) => (
   value ? new Date(value).toISOString().split('T')[0] : ''
@@ -42,13 +37,23 @@ function MangaForm({
   initialData = {},
   onSubmit,
   isLoading,
-  heading = 'Crear manga local',
-  description = 'Completá los datos principales del manga antes de publicarlo en MangaTrack.',
-  submitLabel = 'Guardar manga',
+  heading,
+  description,
+  submitLabel,
 }) {
+  const { t } = useI18n()
   const [form, setForm] = useState(() => buildInitialForm(initialData))
 
   const isExternalPrefill = Boolean(initialData?.source)
+  const resolvedHeading = heading || t('admin.createLocalManga')
+  const resolvedDescription = description || t('admin.createLocalMangaDescription')
+  const resolvedSubmitLabel = submitLabel || t('admin.saveManga')
+  const statusOptions = [
+    { value: 'ongoing', label: t('admin.statusOptions.publishing') },
+    { value: 'completed', label: t('admin.statusOptions.complete') },
+    { value: 'hiatus', label: t('admin.statusOptions.hiatus') },
+    { value: 'cancelled', label: t('admin.statusOptions.discontinued') },
+  ]
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -78,15 +83,15 @@ function MangaForm({
     <div className="manga-form-shell">
       <div className="manga-form-heading">
         <div>
-          <span className="manga-form-kicker">{isExternalPrefill ? 'Datos precompletados' : 'Carga manual'}</span>
-          <h3>{heading}</h3>
-          <p>{description}</p>
+          <span className="manga-form-kicker">{isExternalPrefill ? t('admin.form.prefilledKicker') : t('admin.form.manualKicker')}</span>
+          <h3>{resolvedHeading}</h3>
+          <p>{resolvedDescription}</p>
         </div>
 
         {isExternalPrefill ? (
           <div className="manga-form-source-chip">
             <strong>{initialData.source.toUpperCase()}</strong>
-            <span>{initialData.score ? `Score ${initialData.score}` : 'Importación externa lista para revisar'}</span>
+            <span>{initialData.score ? `${t('common.score')} ${initialData.score}` : t('admin.form.scoreReady')}</span>
           </div>
         ) : null}
       </div>
@@ -96,36 +101,36 @@ function MangaForm({
           {form.coverUrl ? (
             <img
               src={form.coverUrl}
-              alt={form.title || 'Vista previa de portada'}
+              alt={form.title || t('admin.form.noCover')}
               onError={(event) => {
                 event.target.src = '/placeholder-manga.jpg'
               }}
             />
           ) : (
             <div className="manga-form-preview-placeholder">
-              <strong>Sin portada</strong>
-              <span>Agregá una imagen para revisar cómo se verá en catálogo.</span>
+              <strong>{t('admin.form.noCover')}</strong>
+              <span>{t('admin.form.noCoverMessage')}</span>
             </div>
           )}
         </div>
 
         <div className="manga-form-overview-panel">
           <div className="manga-form-overview-card">
-            <span>Estado</span>
-            <strong>{statusOptions.find((option) => option.value === form.status)?.label || 'Sin estado'}</strong>
+            <span>{t('admin.form.overviewStatus')}</span>
+            <strong>{statusOptions.find((option) => option.value === form.status)?.label || t('admin.form.noStatus')}</strong>
           </div>
           <div className="manga-form-overview-card">
-            <span>Capítulos</span>
-            <strong>{form.chapters || 'Sin dato'}</strong>
+            <span>{t('admin.form.overviewChapters')}</span>
+            <strong>{form.chapters || t('admin.form.noData')}</strong>
           </div>
           <div className="manga-form-overview-card">
-            <span>Publicación</span>
-            <strong>{form.publishedFrom || 'Pendiente'}</strong>
+            <span>{t('admin.form.overviewPublication')}</span>
+            <strong>{form.publishedFrom || t('admin.form.pending')}</strong>
           </div>
 
           {initialData?.url ? (
             <a href={initialData.url} target="_blank" rel="noreferrer" className="manga-form-reference-link">
-              Ver ficha externa
+              {t('admin.form.externalFile')}
             </a>
           ) : null}
         </div>
@@ -133,13 +138,13 @@ function MangaForm({
 
       <form onSubmit={handleSubmit} className="manga-form">
         <MangaFormSection
-          kicker="Sección 1"
-          title="Datos principales"
-          description="Título, slug y responsables creativos del manga."
+          kicker={t('admin.form.section1Kicker')}
+          title={t('admin.form.section1Title')}
+          description={t('admin.form.section1Description')}
         >
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="title">Título *</label>
+              <label htmlFor="title">{t('admin.form.title')}</label>
               <input
                 id="title"
                 name="title"
@@ -152,7 +157,7 @@ function MangaForm({
             </div>
 
             <div className="form-group">
-              <label htmlFor="slug">Slug</label>
+              <label htmlFor="slug">{t('admin.form.slug')}</label>
               <div className="slug-input-group">
                 <input
                   id="slug"
@@ -168,7 +173,7 @@ function MangaForm({
                   className="slug-generate-btn"
                   disabled={!form.title}
                 >
-                  Generar
+                  {t('admin.form.generateSlug')}
                 </button>
               </div>
             </div>
@@ -176,7 +181,7 @@ function MangaForm({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="author">Autor</label>
+              <label htmlFor="author">{t('common.author')}</label>
               <input
                 id="author"
                 name="author"
@@ -188,7 +193,7 @@ function MangaForm({
             </div>
 
             <div className="form-group">
-              <label htmlFor="artist">Artista</label>
+              <label htmlFor="artist">{t('common.artist')}</label>
               <input
                 id="artist"
                 name="artist"
@@ -202,12 +207,12 @@ function MangaForm({
         </MangaFormSection>
 
         <MangaFormSection
-          kicker="Sección 2"
-          title="Descripción y géneros"
-          description="Este bloque se usa en listados, detalle y descubrimiento."
+          kicker={t('admin.form.section2Kicker')}
+          title={t('admin.form.section2Title')}
+          description={t('admin.form.section2Description')}
         >
           <div className="form-group">
-            <label htmlFor="synopsis">Sinopsis</label>
+            <label htmlFor="synopsis">{t('admin.form.synopsis')}</label>
             <textarea
               id="synopsis"
               name="synopsis"
@@ -219,7 +224,7 @@ function MangaForm({
           </div>
 
           <div className="form-group">
-            <label htmlFor="genres">Géneros</label>
+            <label htmlFor="genres">{t('admin.form.genres')}</label>
             <input
               id="genres"
               name="genres"
@@ -227,19 +232,19 @@ function MangaForm({
               value={form.genres}
               onChange={handleChange}
               className="form-input"
-              placeholder="Action, Drama, Fantasy..."
+              placeholder={t('admin.form.genresPlaceholder')}
             />
           </div>
         </MangaFormSection>
 
         <MangaFormSection
-          kicker="Sección 3"
-          title="Publicación"
-          description="Estado actual, cantidad de capítulos y fechas relevantes."
+          kicker={t('admin.form.section3Kicker')}
+          title={t('admin.form.section3Title')}
+          description={t('admin.form.section3Description')}
         >
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="status">Estado</label>
+              <label htmlFor="status">{t('admin.form.status')}</label>
               <select
                 id="status"
                 name="status"
@@ -256,7 +261,7 @@ function MangaForm({
             </div>
 
             <div className="form-group">
-              <label htmlFor="chapters">Capítulos</label>
+              <label htmlFor="chapters">{t('admin.form.chapters')}</label>
               <input
                 id="chapters"
                 name="chapters"
@@ -271,7 +276,7 @@ function MangaForm({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="publishedFrom">Publicado desde</label>
+              <label htmlFor="publishedFrom">{t('admin.form.publishedFrom')}</label>
               <input
                 id="publishedFrom"
                 name="publishedFrom"
@@ -283,7 +288,7 @@ function MangaForm({
             </div>
 
             <div className="form-group">
-              <label htmlFor="publishedTo">Publicado hasta</label>
+              <label htmlFor="publishedTo">{t('admin.form.publishedTo')}</label>
               <input
                 id="publishedTo"
                 name="publishedTo"
@@ -297,12 +302,12 @@ function MangaForm({
         </MangaFormSection>
 
         <MangaFormSection
-          kicker="Sección 4"
-          title="Imágenes"
-          description="Portada principal del manga para tarjetas y detalle."
+          kicker={t('admin.form.section4Kicker')}
+          title={t('admin.form.section4Title')}
+          description={t('admin.form.section4Description')}
         >
           <div className="form-group">
-            <label htmlFor="coverUrl">URL de portada</label>
+            <label htmlFor="coverUrl">{t('admin.form.coverUrl')}</label>
             <input
               id="coverUrl"
               name="coverUrl"
@@ -320,7 +325,7 @@ function MangaForm({
             disabled={isLoading || !form.title.trim()}
             className="form-submit-btn"
           >
-            {isLoading ? 'Guardando...' : submitLabel}
+            {isLoading ? t('admin.form.saving') : resolvedSubmitLabel}
           </button>
         </div>
       </form>

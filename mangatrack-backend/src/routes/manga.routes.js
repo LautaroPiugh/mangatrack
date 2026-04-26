@@ -288,6 +288,8 @@ router.post('/admin/external/import', authMiddleware, requireRole('admin'), exte
 
 router.get('/admin/external-mangas/search', authMiddleware, requireRole('admin'), externalMangaSearchValidations, validateRequest, externalMangaController.searchExternalMangas);
 router.get('/admin/external-mangas/top', authMiddleware, requireRole('admin'), externalTopMangaValidations, validateRequest, externalMangaController.getTopExternalMangas);
+router.get('/admin/external-mangas/genres', authMiddleware, requireRole('admin'), externalMangaController.getExternalMangaGenres);
+router.get('/admin/external-mangas/:malId', authMiddleware, requireRole('admin'), externalMangaIdValidations, validateRequest, externalMangaController.getExternalMangaById);
 
 router.get('/', listMangaValidations, validateRequest, mangaController.getAllMangas);
 router.get('/:id/reviews', mangaReviewsValidations, validateRequest, mangaController.getMangaReviews);

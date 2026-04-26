@@ -1,5 +1,6 @@
 import ImageWithFallback from '../common/ImageWithFallback.jsx'
 import useFeedback from '../../hooks/useFeedback.js'
+import useI18n from '../../hooks/useI18n.js'
 import useUserLibrary from '../../hooks/useUserLibrary.js'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -9,6 +10,7 @@ const getMangaId = (manga) => manga?._id || manga?.id || null
 function MangaCard({ manga }) {
   const navigate = useNavigate()
   const { notify } = useFeedback()
+  const { t } = useI18n()
   const {
     isFavorite,
     isInWatchlist,
@@ -52,14 +54,24 @@ function MangaCard({ manga }) {
     try {
       if (favoriteActive) {
         await removeFavorite(mangaId)
+        notify({
+          variant: 'info',
+          title: t('notifications.favoriteRemovedTitle'),
+          message: t('notifications.favoriteRemovedMessage', { title: manga.title }),
+        })
       } else {
         await addFavorite(mangaId)
+        notify({
+          variant: 'success',
+          title: t('notifications.favoriteAddedTitle'),
+          message: t('notifications.favoriteAddedMessage', { title: manga.title }),
+        })
       }
     } catch (error) {
       notify({
         variant: 'error',
-        title: 'No se pudo actualizar favoritos',
-        message: error.message || 'Intentá nuevamente.',
+        title: t('notifications.favoritesErrorTitle'),
+        message: error.message || t('notifications.tryAgainMessage'),
       })
     } finally {
       setIsFavoriteLoading(false)
@@ -78,14 +90,24 @@ function MangaCard({ manga }) {
     try {
       if (watchlistActive) {
         await removeFromWatchlist(mangaId)
+        notify({
+          variant: 'info',
+          title: t('notifications.watchlistRemovedTitle'),
+          message: t('notifications.watchlistRemovedMessage', { title: manga.title }),
+        })
       } else {
         await addToWatchlist(mangaId)
+        notify({
+          variant: 'success',
+          title: t('notifications.watchlistAddedTitle'),
+          message: t('notifications.watchlistAddedMessage', { title: manga.title }),
+        })
       }
     } catch (error) {
       notify({
         variant: 'error',
-        title: 'No se pudo actualizar pendientes',
-        message: error.message || 'Intentá nuevamente.',
+        title: t('notifications.watchlistErrorTitle'),
+        message: error.message || t('notifications.tryAgainMessage'),
       })
     } finally {
       setIsWatchlistLoading(false)
@@ -126,7 +148,7 @@ function MangaCard({ manga }) {
               type="button"
               className={favoriteActive ? 'figma-action figma-action-active' : 'figma-action'}
               onClick={handleFavorite}
-              aria-label={favoriteActive ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              aria-label={favoriteActive ? t('notifications.favoriteRemovedTitle') : t('notifications.favoriteAddedTitle')}
               aria-pressed={favoriteActive}
               disabled={isFavoriteLoading || isLibraryLoading}
             >
@@ -136,7 +158,7 @@ function MangaCard({ manga }) {
               type="button"
               className={watchlistActive ? 'figma-action figma-action-pending' : 'figma-action'}
               onClick={handleWatchlist}
-              aria-label={watchlistActive ? 'Quitar de pendientes' : 'Agregar a pendientes'}
+              aria-label={watchlistActive ? t('notifications.watchlistRemovedTitle') : t('notifications.watchlistAddedTitle')}
               aria-pressed={watchlistActive}
               disabled={isWatchlistLoading || isLibraryLoading}
             >
@@ -145,8 +167,8 @@ function MangaCard({ manga }) {
           </div>
 
           <div className="figma-card-flags" aria-live="polite">
-            {favoriteActive ? <span className="figma-card-flag">Favorito</span> : null}
-            {watchlistActive ? <span className="figma-card-flag figma-card-flag-pending">Pendiente</span> : null}
+            {favoriteActive ? <span className="figma-card-flag">{t('common.favorites')}</span> : null}
+            {watchlistActive ? <span className="figma-card-flag figma-card-flag-pending">{t('common.watchlist')}</span> : null}
           </div>
         </div>
       </div>

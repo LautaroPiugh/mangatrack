@@ -1,26 +1,13 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
+import UserAvatar from '../../components/user/UserAvatar.jsx'
+import useI18n from '../../hooks/useI18n.js'
 import userService from '../../services/userService.js'
-
-const formatMemberSince = (value) => {
-  if (!value) {
-    return 'Fecha no disponible'
-  }
-
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(value))
-}
-
-const getUserInitial = (profile) => (
-  profile?.username?.trim()?.slice(0, 1)?.toUpperCase()
-  || profile?.name?.trim()?.slice(0, 1)?.toUpperCase()
-  || 'M'
-)
+import { formatLongDate } from '../../utils/date.js'
 
 function ProfilePage() {
+  const { t } = useI18n()
   const [profile, setProfile] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -69,18 +56,18 @@ function ProfilePage() {
   }
 
   const statCards = [
-    { label: 'Reseñas', value: stats.reviewsCount || 0, icon: '★', color: 'orange' },
-    { label: 'Favoritos', value: stats.favoritesCount || 0, icon: '♥', color: 'green' },
-    { label: 'Pendientes', value: stats.watchlistCount || 0, icon: '◷', color: 'blue' },
-    { label: 'Promedio dado', value: Number(stats.averageRatingGiven || 0).toFixed(1), icon: '☆', color: 'purple' },
+    { label: t('profile.reviews'), value: stats.reviewsCount || 0, icon: '★', color: 'orange' },
+    { label: t('profile.favorites'), value: stats.favoritesCount || 0, icon: '♥', color: 'green' },
+    { label: t('profile.watchlist'), value: stats.watchlistCount || 0, icon: '◷', color: 'blue' },
+    { label: t('profile.averageRating'), value: Number(stats.averageRatingGiven || 0).toFixed(1), icon: '☆', color: 'purple' },
   ]
 
   return (
     <div className="figma-page">
       <section className="list-header">
         <div>
-          <h1>Mi perfil</h1>
-          <p>Tu espacio personal con actividad, biblioteca y estadísticas de lectura.</p>
+          <h1>{t('profile.title')}</h1>
+          <p>{t('profile.subtitle')}</p>
         </div>
       </section>
 
@@ -110,7 +97,7 @@ function ProfilePage() {
         {!isLoading && error ? (
           <div className="empty-state">
             <span className="empty-state-icon">!</span>
-            <h2>No se pudo cargar tu perfil</h2>
+            <h2>{t('profile.loadErrorTitle')}</h2>
             <p>{error}</p>
           </div>
         ) : null}
@@ -119,18 +106,27 @@ function ProfilePage() {
           <section className="profile-shell">
             <article className="profile-overview-card">
               <div className="profile-overview-head">
-                <div className="profile-avatar">{getUserInitial(profile)}</div>
+                <div className="profile-avatar">
+                  <UserAvatar user={profile} size={96} />
+                </div>
 
                 <div className="profile-overview-copy">
                   <div className="profile-overview-title">
-                    <h2>{profile.name}</h2>
+                    <h2>{profile.displayName || profile.name}</h2>
                     <p>@{profile.username}</p>
                   </div>
 
                   <div className="profile-meta">
                     <span>{profile.email}</span>
                     {profile.role === 'admin' ? <span className="profile-badge">Admin</span> : null}
-                    <span>Miembro desde {formatMemberSince(profile.createdAt)}</span>
+                    <span>{t('common.memberSince', { date: formatLongDate(profile.createdAt) })}</span>
+                  </div>
+
+                  {profile.bio ? <p className="public-profile-bio compact">{profile.bio}</p> : null}
+
+                  <div className="profile-inline-actions">
+                    <Link className="filter-pill" to="/settings/profile">{t('profile.editProfile')}</Link>
+                    <Link className="primary-action" to={`/users/${profile.username}`}>{t('profile.publicView')}</Link>
                   </div>
                 </div>
               </div>
@@ -150,7 +146,7 @@ function ProfilePage() {
               <section className="figma-section">
                 <div className="section-title">
                   <span>#</span>
-                  <h2>Géneros más reseñados</h2>
+                  <h2>{t('profile.topGenres')}</h2>
                 </div>
 
                 <div className="profile-genre-list">

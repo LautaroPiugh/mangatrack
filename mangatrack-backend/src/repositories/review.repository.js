@@ -5,7 +5,7 @@ const Review = require('../models/Review');
 const reviewPopulation = [
   {
     path: 'user',
-    select: 'name username',
+    select: 'name username displayName avatar bio createdAt',
   },
   {
     path: 'manga',

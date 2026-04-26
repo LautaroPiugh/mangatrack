@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 
 import ReviewCard from '../../components/review/ReviewCard.jsx'
+import StarRatingInput from '../../components/review/StarRatingInput.jsx'
 import useAuth from '../../hooks/useAuth.js'
 import useFeedback from '../../hooks/useFeedback.js'
+import useI18n from '../../hooks/useI18n.js'
 import mangaService from '../../services/mangaService.js'
 import reviewService from '../../services/reviewService.js'
 
@@ -15,6 +17,7 @@ const initialForm = {
 function ReviewsPage() {
   const { user } = useAuth()
   const { notify } = useFeedback()
+  const { t } = useI18n()
   const [viewMode, setViewMode] = useState('public')
   const [reviews, setReviews] = useState([])
   const [meta, setMeta] = useState(null)
@@ -45,8 +48,8 @@ function ReviewsPage() {
         if (isMounted) {
           notify({
             variant: 'error',
-            title: 'No se pudieron cargar los mangas',
-            message: loadError.message || 'Intentá nuevamente.',
+            title: t('reviewsPage.loadMangasErrorTitle'),
+            message: loadError.message || t('reviewsPage.loadMangasErrorMessage'),
           })
         }
       }
@@ -57,7 +60,7 @@ function ReviewsPage() {
     return () => {
       isMounted = false
     }
-  }, [notify])
+  }, [notify, t])
 
   useEffect(() => {
     let isMounted = true
@@ -82,7 +85,7 @@ function ReviewsPage() {
           return
         }
 
-        setError(loadError.message || 'No se pudieron cargar las reviews.')
+        setError(loadError.message || t('reviewsPage.loadErrorMessage'))
       } finally {
         if (isMounted) {
           setIsLoading(false)
@@ -95,7 +98,7 @@ function ReviewsPage() {
     return () => {
       isMounted = false
     }
-  }, [page, viewMode])
+  }, [page, t, viewMode])
 
   const handleFormChange = (event) => {
     const { name, value } = event.target
@@ -120,15 +123,15 @@ function ReviewsPage() {
       setPage(1)
       notify({
         variant: 'success',
-        title: 'Reseña guardada',
-        message: 'La review se guardó correctamente.',
+        title: t('notifications.reviewCreatedTitle'),
+        message: t('notifications.reviewSavedMessage'),
       })
 
       const response = await reviewService.getMyReviews({ page: 1, limit: 10 })
       setReviews(response.items || [])
       setMeta(response.meta)
     } catch (submitError) {
-      setFormError(submitError.message || 'No se pudo guardar la reseña.')
+      setFormError(submitError.message || t('reviewsPage.saveErrorMessage'))
     } finally {
       setIsSubmitting(false)
     }
@@ -148,14 +151,14 @@ function ReviewsPage() {
       setMeta(response.meta)
       notify({
         variant: 'success',
-        title: 'Reseña eliminada',
-        message: 'La review se eliminó correctamente.',
+        title: t('notifications.reviewDeletedTitle'),
+        message: t('notifications.reviewDeletedMessage'),
       })
     } catch (deleteError) {
       notify({
         variant: 'error',
-        title: 'No se pudo eliminar la reseña',
-        message: deleteError.message || 'Intentá nuevamente.',
+        title: t('notifications.reviewDeleteErrorTitle'),
+        message: deleteError.message || t('notifications.tryAgainMessage'),
       })
     } finally {
       setIsDeletingId('')
@@ -171,14 +174,14 @@ function ReviewsPage() {
     <div className="figma-page">
       <section className="list-header">
         <div>
-          <h1>Reseñas</h1>
-          <p>Opiniones breves de lectores para descubrir qué vale la pena seguir.</p>
-          {meta?.total ? <p className="list-summary">{meta.total} reseñas encontradas</p> : null}
+          <h1>{t('reviewsPage.title')}</h1>
+          <p>{t('reviewsPage.subtitle')}</p>
+          {meta?.total ? <p className="list-summary">{t('reviewsPage.resultsCount', { count: meta.total })}</p> : null}
         </div>
 
         <div className="list-header-actions">
           <button type="button" className="primary-action" onClick={() => setIsCreateOpen((current) => !current)}>
-            {isCreateOpen ? 'Cancelar' : '＋ Nueva reseña'}
+            {isCreateOpen ? t('reviewsPage.closeForm') : t('reviewsPage.newReview')}
           </button>
 
           <div className="filter-row">
@@ -190,7 +193,7 @@ function ReviewsPage() {
                 setPage(1)
               }}
             >
-              Todas
+              {t('reviewsPage.publicTab')}
             </button>
             <button
               type="button"
@@ -200,7 +203,7 @@ function ReviewsPage() {
                 setPage(1)
               }}
             >
-              Mis reseñas
+              {t('reviewsPage.myTab')}
             </button>
           </div>
         </div>
@@ -211,14 +214,14 @@ function ReviewsPage() {
           <section className="review-editor-panel">
             <div className="section-title">
               <span>★</span>
-              <h2>Nueva reseña</h2>
+              <h2>{t('reviewsPage.createTitle')}</h2>
             </div>
 
             <form className="review-editor-form" onSubmit={handleCreateReview}>
               <label>
-                <span>Manga</span>
+                <span>{t('reviewsPage.mangaLabel')}</span>
                 <select name="mangaId" value={reviewForm.mangaId} onChange={handleFormChange} required>
-                  <option value="">Seleccionar manga</option>
+                  <option value="">{t('reviewsPage.selectManga')}</option>
                   {availableMangas.map((manga) => (
                     <option key={manga._id || manga.id || manga.slug} value={manga._id || manga.id}>
                       {manga.title}
@@ -228,37 +231,32 @@ function ReviewsPage() {
               </label>
 
               <div className="review-rating-field">
-                <span>Rating</span>
-                <div className="review-rating-picker" aria-label="Seleccionar rating">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      className={star <= Number(reviewForm.rating) ? 'figma-star figma-star-active' : 'figma-star'}
-                      onClick={() => setReviewForm((current) => ({ ...current, rating: star }))}
-                      aria-label={`${star} estrellas`}
-                    >
-                      ★
-                    </button>
-                  ))}
-                </div>
+                <span>{t('reviewsPage.ratingLabel')}</span>
+                <StarRatingInput
+                  value={Number(reviewForm.rating) || 0}
+                  onChange={(nextRating) => setReviewForm((current) => ({ ...current, rating: nextRating }))}
+                  ariaLabel={t('reviewsPage.ratingAria')}
+                />
+                <small className="review-rating-note">
+                  {t('reviewsPage.ratingHelp')}
+                </small>
               </div>
 
               <label className="review-editor-form-wide">
-                <span>Contenido</span>
+                <span>{t('reviewsPage.contentLabel')}</span>
                 <textarea
                   name="content"
                   value={reviewForm.content}
                   onChange={handleFormChange}
                   rows="4"
                   maxLength="1000"
-                  placeholder="Escribí una opinión breve sobre este manga..."
+                  placeholder={t('reviewsPage.contentPlaceholder')}
                 />
               </label>
 
               <div className="review-editor-actions">
                 <button type="submit" className="primary-action" disabled={isSubmitting || !reviewForm.rating}>
-                  {isSubmitting ? 'Guardando...' : 'Guardar reseña'}
+                  {isSubmitting ? t('common.saving') : t('reviewsPage.submit')}
                 </button>
               </div>
             </form>
@@ -270,15 +268,15 @@ function ReviewsPage() {
         {isLoading ? (
           <div className="empty-state">
             <span className="empty-state-icon">⌛</span>
-            <h2>Cargando reseñas</h2>
-            <p>Estamos consultando las reviews reales.</p>
+            <h2>{t('reviewsPage.loadingTitle')}</h2>
+            <p>{t('reviewsPage.loadingMessage')}</p>
           </div>
         ) : null}
 
         {!isLoading && error ? (
           <div className="empty-state">
             <span className="empty-state-icon">!</span>
-            <h2>No se pudieron cargar las reseñas</h2>
+            <h2>{t('reviewsPage.loadErrorTitle')}</h2>
             <p>{error}</p>
           </div>
         ) : null}
@@ -297,7 +295,7 @@ function ReviewsPage() {
                       onClick={() => handleDeleteReview(review._id || review.id)}
                       disabled={isDeletingId === (review._id || review.id)}
                     >
-                      {isDeletingId === (review._id || review.id) ? 'Eliminando...' : 'Eliminar'}
+                      {isDeletingId === (review._id || review.id) ? t('reviewsPage.deletingAction') : t('reviewsPage.deleteAction')}
                     </button>
                   ) : null}
                 />
@@ -312,10 +310,10 @@ function ReviewsPage() {
                   onClick={() => setPage((current) => Math.max(current - 1, 1))}
                   disabled={page <= 1}
                 >
-                  Anterior
+                  {t('common.previous')}
                 </button>
                 <span className="pagination-copy">
-                  Página {meta.page} de {meta.totalPages}
+                  {t('common.pageOf', { current: meta.page, total: meta.totalPages })}
                 </span>
                 <button
                   type="button"
@@ -323,7 +321,7 @@ function ReviewsPage() {
                   onClick={() => setPage((current) => Math.min(current + 1, meta.totalPages))}
                   disabled={page >= meta.totalPages}
                 >
-                  Siguiente
+                  {t('common.next')}
                 </button>
               </div>
             ) : null}
@@ -333,8 +331,8 @@ function ReviewsPage() {
         {!isLoading && !error && !reviews.length ? (
           <div className="empty-state">
             <span className="empty-state-icon">★</span>
-            <h2>No hay reseñas para mostrar</h2>
-            <p>{viewMode === 'mine' ? 'Todavía no escribiste ninguna reseña.' : 'Aún no hay reseñas públicas.'}</p>
+            <h2>{t('reviewsPage.emptyTitle')}</h2>
+            <p>{viewMode === 'mine' ? t('reviewsPage.emptyMineMessage') : t('reviewsPage.emptyPublicMessage')}</p>
           </div>
         ) : null}
       </div>

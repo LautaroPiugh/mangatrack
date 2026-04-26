@@ -3,21 +3,13 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import MangaCard from '../../components/manga/MangaCard.jsx'
 import ReviewCard from '../../components/review/ReviewCard.jsx'
+import useI18n from '../../hooks/useI18n.js'
 import useUserLibrary from '../../hooks/useUserLibrary.js'
 import userService from '../../services/userService.js'
 
-const libraryTabs = [
-  { value: 'favorites', label: 'Favoritos' },
-  { value: 'watchlist', label: 'Pendientes' },
-  { value: 'reviews', label: 'Mis reseñas' },
-]
-
-const getActiveTab = (value) => (
-  libraryTabs.some((item) => item.value === value) ? value : 'favorites'
-)
-
 function LibraryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { t } = useI18n()
   const {
     favorites,
     watchlist,
@@ -33,8 +25,15 @@ function LibraryPage() {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const libraryTabs = useMemo(() => ([
+    { value: 'favorites', label: t('common.favorites') },
+    { value: 'watchlist', label: t('common.watchlist') },
+    { value: 'reviews', label: t('libraryPage.myReviewsTab') },
+  ]), [t])
 
-  const activeTab = getActiveTab(searchParams.get('tab'))
+  const activeTab = libraryTabs.some((item) => item.value === searchParams.get('tab'))
+    ? searchParams.get('tab')
+    : 'favorites'
   const page = Math.max(Number.parseInt(searchParams.get('page') || '1', 10) || 1, 1)
 
   useEffect(() => {
@@ -74,7 +73,7 @@ function LibraryPage() {
           return
         }
 
-        setError(loadError.message || 'No se pudo cargar tu biblioteca.')
+        setError(loadError.message || t('libraryPage.loadErrorTitle'))
       } finally {
         if (isMounted) {
           setIsLoading(false)
@@ -87,7 +86,7 @@ function LibraryPage() {
     return () => {
       isMounted = false
     }
-  }, [activeTab, page])
+  }, [activeTab, page, t])
 
   const resolvedStats = useMemo(() => ({
     reviewsCount: library.stats?.reviewsCount || 0,
@@ -136,8 +135,8 @@ function LibraryPage() {
       return (
         <div className="empty-state">
           <span className="empty-state-icon">♥</span>
-          <h2>Todavía no agregaste favoritos</h2>
-          <p>Guardá tus mangas preferidos para encontrarlos rápido en tu biblioteca.</p>
+          <h2>{t('libraryPage.favoritesEmptyTitle')}</h2>
+          <p>{t('libraryPage.favoritesEmptyMessage')}</p>
         </div>
       )
     }
@@ -146,8 +145,8 @@ function LibraryPage() {
       return (
         <div className="empty-state">
           <span className="empty-state-icon">◷</span>
-          <h2>No tenés pendientes</h2>
-          <p>Agregá mangas a pendientes para leerlos después.</p>
+          <h2>{t('libraryPage.watchlistEmptyTitle')}</h2>
+          <p>{t('libraryPage.watchlistEmptyMessage')}</p>
         </div>
       )
     }
@@ -155,8 +154,8 @@ function LibraryPage() {
     return (
       <div className="empty-state">
         <span className="empty-state-icon">★</span>
-        <h2>Aún no escribiste reseñas</h2>
-        <p>Cuando publiques una review, va a aparecer acá junto al manga asociado.</p>
+        <h2>{t('libraryPage.reviewsEmptyTitle')}</h2>
+        <p>{t('libraryPage.reviewsEmptyMessage')}</p>
       </div>
     )
   }
@@ -165,8 +164,8 @@ function LibraryPage() {
     <div className="figma-page">
       <section className="list-header">
         <div>
-          <h1>Mi biblioteca</h1>
-          <p>Reuní tus favoritos, pendientes y reseñas en un solo lugar.</p>
+          <h1>{t('libraryPage.title')}</h1>
+          <p>{t('libraryPage.subtitle')}</p>
         </div>
 
         <div className="list-header-actions">
@@ -189,19 +188,19 @@ function LibraryPage() {
         <section className="library-summary-strip">
           <article className="library-summary-card">
             <strong>{resolvedStats.favoritesCount}</strong>
-            <span>Favoritos</span>
+            <span>{t('common.favorites')}</span>
           </article>
           <article className="library-summary-card">
             <strong>{resolvedStats.watchlistCount}</strong>
-            <span>Pendientes</span>
+            <span>{t('common.watchlist')}</span>
           </article>
           <article className="library-summary-card">
             <strong>{resolvedStats.reviewsCount}</strong>
-            <span>Reseñas</span>
+            <span>{t('common.reviews')}</span>
           </article>
           <article className="library-summary-card">
             <strong>{resolvedStats.averageRatingGiven}</strong>
-            <span>Promedio dado</span>
+            <span>{t('publicProfile.averageRating')}</span>
           </article>
         </section>
 
@@ -222,7 +221,7 @@ function LibraryPage() {
         {!showLoadingState && error && !activeItems.length ? (
           <div className="empty-state">
             <span className="empty-state-icon">!</span>
-            <h2>No se pudo cargar tu biblioteca</h2>
+            <h2>{t('libraryPage.loadErrorTitle')}</h2>
             <p>{error}</p>
           </div>
         ) : null}
@@ -254,7 +253,7 @@ function LibraryPage() {
                   review={review}
                   actions={review.manga?.slug ? (
                     <Link className="review-inline-link" to={`/mangas/${review.manga.slug}`}>
-                      Ver manga
+                      {t('libraryPage.viewManga')}
                     </Link>
                   ) : null}
                 />
@@ -269,10 +268,10 @@ function LibraryPage() {
                   onClick={() => goToPage(page - 1)}
                   disabled={page <= 1}
                 >
-                  Anterior
+                  {t('common.previous')}
                 </button>
                 <span className="pagination-copy">
-                  Página {library.meta.page} de {library.meta.totalPages}
+                  {t('common.pageOf', { current: library.meta.page, total: library.meta.totalPages })}
                 </span>
                 <button
                   type="button"
@@ -280,7 +279,7 @@ function LibraryPage() {
                   onClick={() => goToPage(page + 1)}
                   disabled={page >= library.meta.totalPages}
                 >
-                  Siguiente
+                  {t('common.next')}
                 </button>
               </div>
             ) : null}

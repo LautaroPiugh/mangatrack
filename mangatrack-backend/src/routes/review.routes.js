@@ -6,6 +6,7 @@ const { authMiddleware } = require('../middleware/auth.middleware');
 const validateRequest = require('../middleware/validate.middleware');
 
 const router = express.Router();
+const isHalfStep = (value) => Number.isInteger(Number(value) * 2);
 
 const reviewIdValidation = [
   param('id')
@@ -58,8 +59,10 @@ const createReviewValidations = [
   body('rating')
     .notEmpty().withMessage('La puntuacion es obligatoria.')
     .bail()
-    .isInt({ min: 1, max: 5 }).withMessage('La puntuacion debe ser un entero entre 1 y 5.')
-    .toInt(),
+    .isFloat({ min: 0.5, max: 5 }).withMessage('La puntuacion debe estar entre 0.5 y 5.')
+    .bail()
+    .custom(isHalfStep).withMessage('La puntuacion debe ser multiplo de 0.5.')
+    .toFloat(),
   body('content')
     .optional({ values: 'falsy' })
     .trim()
@@ -80,8 +83,10 @@ const updateReviewValidations = [
     .withMessage('Debes enviar al menos un campo para actualizar la review.'),
   body('rating')
     .optional()
-    .isInt({ min: 1, max: 5 }).withMessage('La puntuacion debe ser un entero entre 1 y 5.')
-    .toInt(),
+    .isFloat({ min: 0.5, max: 5 }).withMessage('La puntuacion debe estar entre 0.5 y 5.')
+    .bail()
+    .custom(isHalfStep).withMessage('La puntuacion debe ser multiplo de 0.5.')
+    .toFloat(),
   body('content')
     .optional({ values: 'falsy' })
     .trim()

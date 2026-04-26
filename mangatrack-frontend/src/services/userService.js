@@ -1,35 +1,30 @@
-import { request, unwrapData } from './api.js'
-
-const buildQuery = (params = {}) => {
-  const searchParams = new URLSearchParams()
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      searchParams.set(key, value)
-    }
-  })
-
-  const query = searchParams.toString()
-  return query ? `?${query}` : ''
-}
+import axiosClient from '../api/axiosClient.js'
+import { buildParams, getPayloadData, runRequest } from './http.js'
 
 export const userService = {
   async getMyProfile() {
-    return unwrapData(await request('/users/me/profile'))
+    return runRequest(async () => {
+      const response = await axiosClient.get('/users/me/profile')
+      return getPayloadData(response)
+    }, 'No se pudo cargar tu perfil.')
   },
   async getMyLibrary(params) {
-    const payload = await request(`/users/me/library${buildQuery(params)}`)
+    return runRequest(async () => {
+      const response = await axiosClient.get('/users/me/library', {
+        params: buildParams(params),
+      })
 
-    return {
-      ...unwrapData(payload),
-      meta: payload?.meta || null,
-    }
+      return {
+        ...(getPayloadData(response) || {}),
+        meta: response.data?.meta || null,
+      }
+    }, 'No se pudo cargar tu biblioteca.')
   },
   async updatePreferences(preferences) {
-    return unwrapData(await request('/users/me/preferences', {
-      method: 'PUT',
-      body: preferences,
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.put('/users/me/preferences', preferences)
+      return getPayloadData(response)
+    }, 'No se pudieron actualizar las preferencias.')
   },
 }
 

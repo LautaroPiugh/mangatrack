@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import useAuth from '../hooks/useAuth.js'
 import useFeedback from '../hooks/useFeedback.js'
+import useI18n from '../hooks/useI18n.js'
 import userLibraryService from '../services/userLibraryService.js'
 import UserLibraryContext from './user-library-context.js'
 
@@ -10,6 +11,7 @@ const getMangaId = (manga) => manga?._id || manga?.id || null
 function UserLibraryProvider({ children }) {
   const { isAuthenticated, user } = useAuth()
   const { notify } = useFeedback()
+  const { t } = useI18n()
   const [favorites, setFavorites] = useState([])
   const [watchlist, setWatchlist] = useState([])
   const [isLoading, setIsLoading] = useState(false)
@@ -72,8 +74,8 @@ function UserLibraryProvider({ children }) {
         setWatchlist([])
         notify({
           variant: 'error',
-          title: 'Biblioteca no disponible',
-          message: error.message || 'No se pudieron cargar favoritos y pendientes.',
+          title: t('notifications.libraryUnavailableTitle'),
+          message: error.message || t('notifications.libraryUnavailableMessage'),
         })
       } finally {
         if (isMounted) {
@@ -88,7 +90,7 @@ function UserLibraryProvider({ children }) {
     return () => {
       isMounted = false
     }
-  }, [isAuthenticated, notify, refreshLibrary, user?.id])
+  }, [isAuthenticated, notify, refreshLibrary, t, user?.id])
 
   const addFavorite = useCallback(async (mangaId) => {
     const previousFavorites = favorites

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import useFeedback from '../../hooks/useFeedback.js'
+import useI18n from '../../hooks/useI18n.js'
 import externalMangaService from '../../services/externalMangaService.js'
 
 const FILTER_DEFAULTS = {
@@ -15,59 +16,15 @@ const FILTER_DEFAULTS = {
   minScore: '',
 }
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'Todos los estados' },
-  { value: 'publishing', label: 'En publicación' },
-  { value: 'complete', label: 'Finalizado' },
-  { value: 'hiatus', label: 'En pausa' },
-  { value: 'discontinued', label: 'Discontinuado' },
-  { value: 'upcoming', label: 'Próximamente' },
-]
+const RESULTS_PER_PAGE_OPTIONS = [12, 24]
+const DEFAULT_PAGE_SIZE = RESULTS_PER_PAGE_OPTIONS[0]
 
-const TYPE_OPTIONS = [
-  { value: '', label: 'Todos los tipos' },
-  { value: 'manga', label: 'Manga' },
-  { value: 'novel', label: 'Novela' },
-  { value: 'lightnovel', label: 'Light Novel' },
-  { value: 'oneshot', label: 'One-shot' },
-  { value: 'doujin', label: 'Doujin' },
-  { value: 'manhwa', label: 'Manhwa' },
-  { value: 'manhua', label: 'Manhua' },
-]
-
-const ORDER_OPTIONS = [
-  { value: 'popularity', label: 'Popularidad' },
-  { value: 'rank', label: 'Ranking' },
-  { value: 'score', label: 'Score' },
-  { value: 'start_date', label: 'Fecha de inicio' },
-  { value: 'chapters', label: 'Capítulos' },
-  { value: 'volumes', label: 'Volúmenes' },
-  { value: 'members', label: 'Seguidores' },
-]
-
-const PRESET_ACTIONS = [
-  { id: 'popular', label: 'Populares', description: 'Top por popularidad', mode: 'top', params: { filter: 'bypopularity', limit: 12 } },
-  { id: 'topRated', label: 'Mejor puntuados', description: 'Ordenados por score', mode: 'search', params: { orderBy: 'score', sort: 'desc', limit: 12 } },
-  { id: 'recent', label: 'Recientes', description: 'Lanzamientos más nuevos', mode: 'search', params: { orderBy: 'start_date', sort: 'desc', limit: 12 } },
-]
-
-const formatYear = (date) => {
+const formatYear = (date, fallback) => {
   if (!date) {
-    return 'Sin fecha'
+    return fallback
   }
 
   return new Date(date).getFullYear()
-}
-
-const formatStatusLabel = (status) => {
-  const labels = {
-    ongoing: 'En publicación',
-    completed: 'Finalizado',
-    hiatus: 'En pausa',
-    cancelled: 'Cancelado',
-  }
-
-  return labels[status] || status || 'Sin estado'
 }
 
 const formatMetric = (value, { prefix = '', fallback = 'N/A' } = {}) => {
@@ -78,20 +35,20 @@ const formatMetric = (value, { prefix = '', fallback = 'N/A' } = {}) => {
   return `${prefix}${value}`
 }
 
-const formatCompactNumber = (value) => {
+const formatCompactNumber = (value, locale, fallback = 'N/A') => {
   if (value === null || value === undefined) {
-    return 'N/A'
+    return fallback
   }
 
-  return new Intl.NumberFormat('es-AR', {
+  return new Intl.NumberFormat(locale, {
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(value)
 }
 
-const shortenSynopsis = (synopsis = '', maxLength = 180) => {
+const shortenSynopsis = (synopsis = '', maxLength = 180, fallback) => {
   if (!synopsis) {
-    return 'Sin sinopsis disponible.'
+    return fallback
   }
 
   return synopsis.length > maxLength
@@ -99,7 +56,7 @@ const shortenSynopsis = (synopsis = '', maxLength = 180) => {
     : synopsis
 }
 
-function ExternalResultCard({ manga, onOpenDetail, onOpenImport, onPrefill }) {
+function ExternalResultCard({ manga, onOpenDetail, onOpenImport, onPrefill, t, locale, formatStatusLabel }) {
   return (
     <article className="external-browser-card">
       <div className="external-browser-card-poster">
@@ -116,17 +73,17 @@ function ExternalResultCard({ manga, onOpenDetail, onOpenImport, onPrefill }) {
         <div className="external-browser-card-header">
           <div>
             <h4>{manga.title}</h4>
-            <p>{manga.titleEnglish || manga.titleJapanese || manga.type || 'Manga'}</p>
+            <p>{manga.titleEnglish || manga.titleJapanese || manga.type || t('common.manga')}</p>
           </div>
           <span className="external-browser-score">
-            {formatMetric(manga.score, { prefix: '★ ' })}
+            {formatMetric(manga.score, { prefix: '★ ', fallback: t('common.notAvailable') })}
           </span>
         </div>
 
         <div className="external-browser-metrics">
           <span>{formatStatusLabel(manga.status)}</span>
-          <span>Rank #{formatMetric(manga.rank)}</span>
-          <span>Popularidad #{formatMetric(manga.popularity)}</span>
+          <span>{t('admin.rankLabel', { value: formatMetric(manga.rank, { fallback: t('common.notAvailable') }) })}</span>
+          <span>{t('admin.popularityLabel', { value: formatMetric(manga.popularity, { fallback: t('common.notAvailable') }) })}</span>
         </div>
 
         <div className="external-browser-tags">
@@ -137,22 +94,22 @@ function ExternalResultCard({ manga, onOpenDetail, onOpenImport, onPrefill }) {
           ))}
         </div>
 
-        <p className="external-browser-synopsis">{shortenSynopsis(manga.synopsis)}</p>
+        <p className="external-browser-synopsis">{shortenSynopsis(manga.synopsis, 180, t('admin.noSynopsis'))}</p>
 
         <div className="external-browser-card-footer">
-          <span>{formatYear(manga.publishedFrom)}</span>
-          <span>{formatCompactNumber(manga.members)} seguidores</span>
+          <span>{formatYear(manga.publishedFrom, t('common.noDate'))}</span>
+          <span>{t('common.followers', { count: formatCompactNumber(manga.members, locale, t('common.notAvailable')) })}</span>
         </div>
 
         <div className="external-browser-card-actions">
           <button type="button" className="external-browser-btn subtle" onClick={() => onOpenDetail(manga)}>
-            Ver detalle
+            {t('common.viewDetails')}
           </button>
           <button type="button" className="external-browser-btn secondary" onClick={() => onPrefill(manga)}>
-            Editar en formulario
+            {t('common.editInForm')}
           </button>
           <button type="button" className="external-browser-btn primary" onClick={() => onOpenImport(manga)}>
-            Importar
+            {t('common.import')}
           </button>
         </div>
       </div>
@@ -163,13 +120,20 @@ function ExternalResultCard({ manga, onOpenDetail, onOpenImport, onPrefill }) {
 function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
   const navigate = useNavigate()
   const { notify } = useFeedback()
+  const { language, t } = useI18n()
+  const locale = language === 'en' ? 'en-US' : 'es-AR'
 
   const [filters, setFilters] = useState(FILTER_DEFAULTS)
   const [genres, setGenres] = useState([])
   const [results, setResults] = useState([])
-  const [meta, setMeta] = useState(null)
+  const [pagination, setPagination] = useState(null)
   const [activePreset, setActivePreset] = useState('popular')
-  const [resultsTitle, setResultsTitle] = useState('Populares en MyAnimeList')
+  const [resultsContext, setResultsContext] = useState({ type: 'preset', presetId: 'popular', query: '' })
+  const [currentRequest, setCurrentRequest] = useState({
+    mode: 'top',
+    params: { filter: 'bypopularity', page: 1, limit: DEFAULT_PAGE_SIZE },
+  })
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [isBootstrapping, setIsBootstrapping] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -178,6 +142,97 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
   const [importCandidate, setImportCandidate] = useState(null)
   const [isImporting, setIsImporting] = useState(false)
 
+  const statusOptions = useMemo(() => [
+    { value: '', label: t('admin.allStatuses') },
+    { value: 'publishing', label: t('admin.statusOptions.publishing') },
+    { value: 'complete', label: t('admin.statusOptions.complete') },
+    { value: 'hiatus', label: t('admin.statusOptions.hiatus') },
+    { value: 'discontinued', label: t('admin.statusOptions.discontinued') },
+    { value: 'upcoming', label: t('admin.statusOptions.upcoming') },
+  ], [t])
+
+  const typeOptions = useMemo(() => [
+    { value: '', label: t('admin.allTypes') },
+    { value: 'manga', label: t('admin.typeOptions.manga') },
+    { value: 'novel', label: t('admin.typeOptions.novel') },
+    { value: 'lightnovel', label: t('admin.typeOptions.lightnovel') },
+    { value: 'oneshot', label: t('admin.typeOptions.oneshot') },
+    { value: 'doujin', label: t('admin.typeOptions.doujin') },
+    { value: 'manhwa', label: t('admin.typeOptions.manhwa') },
+    { value: 'manhua', label: t('admin.typeOptions.manhua') },
+  ], [t])
+
+  const orderOptions = useMemo(() => [
+    { value: 'popularity', label: t('admin.orderOptions.popularity') },
+    { value: 'rank', label: t('admin.orderOptions.rank') },
+    { value: 'score', label: t('admin.orderOptions.score') },
+    { value: 'start_date', label: t('admin.orderOptions.start_date') },
+    { value: 'chapters', label: t('admin.orderOptions.chapters') },
+    { value: 'volumes', label: t('admin.orderOptions.volumes') },
+    { value: 'members', label: t('admin.orderOptions.members') },
+  ], [t])
+
+  const presetActions = useMemo(() => [
+    { id: 'popular', label: t('admin.popular'), description: t('admin.popularDescription'), mode: 'top', params: { filter: 'bypopularity' } },
+    { id: 'topRated', label: t('admin.topRated'), description: t('admin.topRatedDescription'), mode: 'search', params: { orderBy: 'score', sort: 'desc' } },
+    { id: 'recent', label: t('admin.recent'), description: t('admin.recentDescription'), mode: 'search', params: { orderBy: 'start_date', sort: 'desc' } },
+  ], [t])
+
+  const formatStatusLabel = (status) => {
+    const labels = {
+      ongoing: t('admin.statusOptions.publishing'),
+      completed: t('admin.statusOptions.complete'),
+      hiatus: t('admin.statusOptions.hiatus'),
+      cancelled: t('admin.statusOptions.discontinued'),
+    }
+
+    return labels[status] || status || t('admin.form.noStatus')
+  }
+
+  const getResultsTitle = () => {
+    if (resultsContext.type === 'search' && resultsContext.query) {
+      return t('admin.resultsTitleForQuery', { query: resultsContext.query })
+    }
+
+    if (resultsContext.type === 'preset') {
+      if (resultsContext.presetId === 'popular') {
+        return t('admin.popularTitle')
+      }
+
+      const preset = presetActions.find((item) => item.id === resultsContext.presetId)
+      return preset?.description || t('admin.resultsTitleDefault')
+    }
+
+    return t('admin.resultsTitleDefault')
+  }
+
+  const applyResponse = (response, nextRequest, nextResultsContext, nextPresetId = '') => {
+    setResults(response.items || [])
+    setPagination(response.pagination || response.meta || null)
+    setCurrentRequest(nextRequest)
+    setResultsContext(nextResultsContext)
+    setActivePreset(nextPresetId)
+  }
+
+  const executeRequest = async (mode, params, nextResultsContext, nextPresetId = '') => {
+    const normalizedParams = {
+      ...params,
+      page: Math.max(Number.parseInt(params.page, 10) || 1, 1),
+      limit: Number.parseInt(params.limit, 10) || pageSize,
+    }
+
+    const nextRequest = {
+      mode,
+      params: normalizedParams,
+    }
+
+    const response = mode === 'top'
+      ? await externalMangaService.getTopExternalMangas(normalizedParams)
+      : await externalMangaService.searchExternalMangas(normalizedParams)
+
+    applyResponse(response, nextRequest, nextResultsContext, nextPresetId)
+  }
+
   useEffect(() => {
     let isMounted = true
 
@@ -185,7 +240,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
       try {
         const [genreItems, topResponse] = await Promise.all([
           externalMangaService.getExternalMangaGenres(),
-          externalMangaService.getTopExternalMangas({ filter: 'bypopularity', limit: 12 }),
+          externalMangaService.getTopExternalMangas({ filter: 'bypopularity', page: 1, limit: DEFAULT_PAGE_SIZE }),
         ])
 
         if (!isMounted) {
@@ -193,15 +248,16 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
         }
 
         setGenres(genreItems)
-        setResults(topResponse.items)
-        setMeta(topResponse.meta)
-        setResultsTitle('Populares en MyAnimeList')
+        applyResponse(topResponse, {
+          mode: 'top',
+          params: { filter: 'bypopularity', page: 1, limit: DEFAULT_PAGE_SIZE },
+        }, { type: 'preset', presetId: 'popular', query: '' }, 'popular')
       } catch (loadError) {
         if (!isMounted) {
           return
         }
 
-        setError(loadError.message || 'No se pudieron cargar los mangas externos.')
+        setError(loadError.message || t('admin.loadErrorMessage'))
       } finally {
         if (isMounted) {
           setIsBootstrapping(false)
@@ -214,7 +270,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [t])
 
   const updateFilter = (field, value) => {
     setFilters((currentFilters) => ({
@@ -228,40 +284,42 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
     onSwitchToManual?.()
     notify({
       variant: 'info',
-      title: 'Formulario precompletado',
-      message: `Se cargaron los datos de "${manga.title}" para que los revises antes de guardar.`,
+      title: t('admin.prefilledTitle'),
+      message: t('admin.prefilledMessage', { title: manga.title }),
     })
   }
 
-  const runSearch = async (nextFilters = filters) => {
+  const runSearch = async (nextFilters = filters, page = 1, limit = pageSize) => {
     setIsLoading(true)
     setError('')
     setActivePreset('')
 
     try {
-      const response = await externalMangaService.searchExternalMangas({
+      await executeRequest('search', {
         ...nextFilters,
-        limit: 12,
+        page,
+        limit,
+      }, {
+        type: nextFilters.q?.trim() ? 'search' : 'default',
+        presetId: '',
+        query: nextFilters.q?.trim() || '',
       })
-
-      setResults(response.items)
-      setMeta(response.meta)
-      setResultsTitle(
-        nextFilters.q?.trim()
-          ? `Resultados para "${nextFilters.q.trim()}"`
-          : 'Exploración avanzada',
-      )
     } catch (searchError) {
       setResults([])
-      setMeta(null)
-      setError(searchError.message || 'No se pudieron buscar mangas externos.')
+      setPagination(null)
+      setError(searchError.message || t('admin.searchErrorMessage'))
+      notify({
+        variant: 'error',
+        title: t('admin.searchErrorTitle'),
+        message: searchError.message || t('admin.searchErrorMessage'),
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const runPreset = async (presetId) => {
-    const preset = PRESET_ACTIONS.find((item) => item.id === presetId)
+  const runPreset = async (presetId, options = {}) => {
+    const preset = presetActions.find((item) => item.id === presetId)
 
     if (!preset) {
       return
@@ -272,21 +330,24 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
     setActivePreset(presetId)
 
     try {
-      if (preset.mode === 'top') {
-        const response = await externalMangaService.getTopExternalMangas(preset.params)
-        setResults(response.items)
-        setMeta(response.meta)
-      } else {
-        const response = await externalMangaService.searchExternalMangas(preset.params)
-        setResults(response.items)
-        setMeta(response.meta)
-      }
-
-      setResultsTitle(preset.description)
+      await executeRequest(preset.mode, {
+        ...preset.params,
+        page: options.page || 1,
+        limit: options.limit || pageSize,
+      }, {
+        type: 'preset',
+        presetId,
+        query: '',
+      }, presetId)
     } catch (presetError) {
       setResults([])
-      setMeta(null)
-      setError(presetError.message || 'No se pudo cargar el preset externo.')
+      setPagination(null)
+      setError(presetError.message || t('admin.searchErrorMessage'))
+      notify({
+        variant: 'error',
+        title: t('admin.presetErrorTitle'),
+        message: presetError.message || t('admin.searchErrorMessage'),
+      })
     } finally {
       setIsLoading(false)
     }
@@ -299,7 +360,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
 
   const handleResetFilters = () => {
     setFilters(FILTER_DEFAULTS)
-    void runPreset('popular')
+    void runPreset('popular', { page: 1, limit: pageSize })
   }
 
   const handleOpenDetail = async (manga) => {
@@ -312,8 +373,8 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
     } catch (detailError) {
       notify({
         variant: 'error',
-        title: 'Detalle no disponible',
-        message: detailError.message || 'No se pudo cargar el detalle del manga.',
+        title: t('admin.detailUnavailableTitle'),
+        message: detailError.message || t('admin.detailUnavailableMessage'),
       })
     } finally {
       setIsDetailLoading(false)
@@ -354,11 +415,11 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
       })
 
       notify({
-        variant: result.duplicate ? 'info' : 'success',
-        title: result.duplicate ? 'Manga existente' : 'Manga importado',
+        variant: result.duplicate ? 'warning' : 'success',
+        title: result.duplicate ? t('admin.duplicateTitle') : t('admin.importedTitle'),
         message: result.duplicate
-          ? `Ya existía un registro para "${result.manga.title}".`
-          : `"${result.manga.title}" ya está en MangaTrack.`,
+          ? t('admin.duplicateMessage', { title: result.manga.title })
+          : t('admin.importedMessage', { title: result.manga.title }),
       })
 
       setImportCandidate(null)
@@ -366,25 +427,59 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
     } catch (importError) {
       notify({
         variant: 'error',
-        title: 'Importación fallida',
-        message: importError.message || 'No se pudo importar el manga.',
+        title: t('admin.importFailedTitle'),
+        message: importError.message || t('admin.importFailedMessage'),
       })
     } finally {
       setIsImporting(false)
     }
   }
 
-  const resultCountLabel = meta?.total
-    ? `${results.length} resultados visibles de ${meta.total}`
-    : `${results.length} resultados`
+  const handlePageSizeChange = (event) => {
+    const nextPageSize = Number.parseInt(event.target.value, 10) || DEFAULT_PAGE_SIZE
+    setPageSize(nextPageSize)
+
+    if (activePreset) {
+      void runPreset(activePreset, { page: 1, limit: nextPageSize })
+      return
+    }
+
+    if (currentRequest.mode === 'search' && currentRequest.params) {
+      void runSearch(filters, 1, nextPageSize)
+      return
+    }
+
+    void runPreset('popular', { page: 1, limit: nextPageSize })
+  }
+
+  const handlePageChange = (nextPage) => {
+    if (nextPage < 1 || nextPage === pagination?.currentPage) {
+      return
+    }
+
+    if (activePreset) {
+      void runPreset(activePreset, { page: nextPage, limit: pageSize })
+      return
+    }
+
+    void runSearch(filters, nextPage, pageSize)
+  }
+
+  const resultCountLabel = pagination?.total
+    ? t('common.resultsVisible', { visible: results.length, total: pagination.total })
+    : t('common.resultsVisibleFallback', { visible: results.length })
+
+  const paginationLabel = pagination?.lastVisiblePage
+    ? t('admin.pageText', { current: pagination.currentPage, total: pagination.lastVisiblePage })
+    : null
 
   return (
     <section className="external-browser">
       <div className="external-browser-header">
         <div>
           <span className="external-browser-kicker">Jikan + MyAnimeList</span>
-          <h3>Buscar e importar</h3>
-          <p>Explorá el catálogo externo con filtros reales, revisá el detalle y traé datos al formulario o importá directo.</p>
+          <h3>{t('admin.externalSearchTitle')}</h3>
+          <p>{t('admin.externalSearchSubtitle')}</p>
         </div>
       </div>
 
@@ -393,11 +488,11 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
           type="text"
           value={filters.q}
           onChange={(event) => updateFilter('q', event.target.value)}
-          placeholder="Título, alias, autor o búsqueda libre..."
+          placeholder={t('admin.externalSearchPlaceholder')}
           className="external-browser-input search"
         />
         <button type="submit" className="external-browser-btn primary" disabled={isLoading}>
-          {isLoading ? 'Buscando...' : 'Buscar'}
+          {isLoading ? t('admin.searching') : t('common.search')}
         </button>
       </form>
 
@@ -407,7 +502,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
           onChange={(event) => updateFilter('genre', event.target.value)}
           className="external-browser-input"
         >
-          <option value="">Todos los géneros</option>
+          <option value="">{t('admin.allGenres')}</option>
           {genres.map((genre) => (
             <option key={genre.id} value={genre.id}>
               {genre.name}
@@ -420,7 +515,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
           onChange={(event) => updateFilter('status', event.target.value)}
           className="external-browser-input"
         >
-          {STATUS_OPTIONS.map((status) => (
+          {statusOptions.map((status) => (
             <option key={status.value || 'all'} value={status.value}>
               {status.label}
             </option>
@@ -432,7 +527,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
           onChange={(event) => updateFilter('type', event.target.value)}
           className="external-browser-input"
         >
-          {TYPE_OPTIONS.map((type) => (
+          {typeOptions.map((type) => (
             <option key={type.value || 'all'} value={type.value}>
               {type.label}
             </option>
@@ -444,9 +539,9 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
           onChange={(event) => updateFilter('orderBy', event.target.value)}
           className="external-browser-input"
         >
-          {ORDER_OPTIONS.map((order) => (
+          {orderOptions.map((order) => (
             <option key={order.value} value={order.value}>
-              Ordenar por {order.label}
+              {t('admin.orderBy', { value: order.label })}
             </option>
           ))}
         </select>
@@ -456,15 +551,15 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
           onChange={(event) => updateFilter('sort', event.target.value)}
           className="external-browser-input"
         >
-          <option value="asc">Ascendente</option>
-          <option value="desc">Descendente</option>
+          <option value="asc">{t('admin.ascending')}</option>
+          <option value="desc">{t('admin.descending')}</option>
         </select>
 
         <input
           type="number"
           min="1900"
           max="2100"
-          placeholder="Año"
+          placeholder={t('admin.yearPlaceholder')}
           value={filters.year}
           onChange={(event) => updateFilter('year', event.target.value)}
           className="external-browser-input"
@@ -475,7 +570,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
           min="0"
           max="10"
           step="0.1"
-          placeholder="Score mínimo"
+          placeholder={t('admin.minScorePlaceholder')}
           value={filters.minScore}
           onChange={(event) => updateFilter('minScore', event.target.value)}
           className="external-browser-input"
@@ -484,7 +579,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
 
       <div className="external-browser-toolbar">
         <div className="external-browser-presets">
-          {PRESET_ACTIONS.map((preset) => (
+          {presetActions.map((preset) => (
             <button
               key={preset.id}
               type="button"
@@ -500,35 +595,48 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
           ))}
         </div>
 
-        <button type="button" className="external-browser-btn subtle" onClick={handleResetFilters} disabled={isLoading}>
-          Resetear filtros
-        </button>
+        <div className="external-browser-toolbar-actions">
+          <label className="external-browser-page-size">
+            <span>{t('admin.resultsPageSize')}</span>
+            <select value={pageSize} onChange={handlePageSizeChange} className="external-browser-input">
+              {RESULTS_PER_PAGE_OPTIONS.map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </label>
+
+          <button type="button" className="external-browser-btn subtle" onClick={handleResetFilters} disabled={isLoading}>
+            {t('common.resetFilters')}
+          </button>
+        </div>
       </div>
 
       <div className="external-browser-results-header">
         <div>
-          <h4>{resultsTitle}</h4>
+          <h4>{getResultsTitle()}</h4>
           <p>{resultCountLabel}</p>
         </div>
+        {paginationLabel ? <p className="external-browser-results-page">{paginationLabel}</p> : null}
       </div>
 
       {error ? <p className="external-browser-error">{error}</p> : null}
 
       {isBootstrapping ? (
         <div className="external-browser-empty">
-          <strong>Cargando catálogo externo...</strong>
-          <span>Preparando géneros, presets y resultados iniciales.</span>
+          <strong>{t('admin.externalLoadingTitle')}</strong>
+          <span>{t('admin.externalLoadingMessage')}</span>
         </div>
       ) : null}
 
       {!isBootstrapping && !isLoading && results.length === 0 ? (
         <div className="external-browser-empty">
-          <strong>Sin resultados</strong>
-          <span>Probá con otro título, un género distinto o alguno de los accesos rápidos.</span>
+          <strong>{t('admin.noResultsTitle')}</strong>
+          <span>{t('admin.noResultsMessage')}</span>
         </div>
       ) : null}
 
       {results.length > 0 ? (
+        <>
         <div className="external-browser-grid">
           {results.map((manga) => (
             <ExternalResultCard
@@ -537,9 +645,34 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
               onOpenDetail={handleOpenDetail}
               onOpenImport={handleOpenImport}
               onPrefill={handlePrefill}
+              t={t}
+              locale={locale}
+              formatStatusLabel={formatStatusLabel}
             />
           ))}
         </div>
+        <div className="external-browser-pagination">
+          <button
+            type="button"
+            className="external-browser-btn subtle"
+            onClick={() => handlePageChange((pagination?.currentPage || 1) - 1)}
+            disabled={isLoading || (pagination?.currentPage || 1) <= 1}
+          >
+            {t('common.previousPage')}
+          </button>
+
+          {paginationLabel ? <span>{paginationLabel}</span> : null}
+
+          <button
+            type="button"
+            className="external-browser-btn subtle"
+            onClick={() => handlePageChange((pagination?.currentPage || 1) + 1)}
+            disabled={isLoading || !pagination?.hasNextPage}
+          >
+            {t('common.nextPage')}
+          </button>
+        </div>
+        </>
       ) : null}
 
       {detailManga ? (
@@ -551,8 +684,8 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
 
             {isDetailLoading ? (
               <div className="external-detail-loading">
-                <strong>Cargando detalle...</strong>
-                <span>Consultando MyAnimeList vía Jikan.</span>
+                <strong>{t('common.loading')}</strong>
+                <span>Jikan + MyAnimeList</span>
               </div>
             ) : (
               <>
@@ -566,14 +699,14 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
                   />
 
                   <div>
-                    <span className="external-browser-kicker">Detalle externo</span>
+                    <span className="external-browser-kicker">{t('admin.externalDetailKicker')}</span>
                     <h3>{detailManga.title}</h3>
-                    <p>{detailManga.titleEnglish || detailManga.titleJapanese || detailManga.type || 'Manga'}</p>
+                    <p>{detailManga.titleEnglish || detailManga.titleJapanese || detailManga.type || t('common.manga')}</p>
 
                     <div className="external-detail-stats">
-                      <span>Score {formatMetric(detailManga.score)}</span>
-                      <span>Rank #{formatMetric(detailManga.rank)}</span>
-                      <span>Popularidad #{formatMetric(detailManga.popularity)}</span>
+                      <span>{t('common.score')} {formatMetric(detailManga.score, { fallback: t('common.notAvailable') })}</span>
+                      <span>{t('admin.rankLabel', { value: formatMetric(detailManga.rank, { fallback: t('common.notAvailable') }) })}</span>
+                      <span>{t('admin.popularityLabel', { value: formatMetric(detailManga.popularity, { fallback: t('common.notAvailable') }) })}</span>
                     </div>
 
                     <div className="external-browser-tags">
@@ -588,55 +721,55 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
 
                 <div className="external-detail-grid">
                   <div>
-                    <h4>Títulos alternativos</h4>
+                    <h4>{t('admin.alternateTitles')}</h4>
                     <ul className="external-detail-list">
-                      <li>Inglés: {detailManga.titleEnglish || 'N/A'}</li>
-                      <li>Japonés: {detailManga.titleJapanese || 'N/A'}</li>
-                      <li>Sinónimos: {detailManga.titleSynonyms?.join(', ') || 'N/A'}</li>
+                      <li>{t('admin.englishTitle')}: {detailManga.titleEnglish || t('common.notAvailable')}</li>
+                      <li>{t('admin.japaneseTitle')}: {detailManga.titleJapanese || t('common.notAvailable')}</li>
+                      <li>{t('admin.synonyms')}: {detailManga.titleSynonyms?.join(', ') || t('common.notAvailable')}</li>
                     </ul>
                   </div>
 
                   <div>
-                    <h4>Ficha</h4>
+                    <h4>{t('admin.dataSheet')}</h4>
                     <ul className="external-detail-list">
-                      <li>Estado: {formatStatusLabel(detailManga.status)}</li>
-                      <li>Tipo: {detailManga.type || 'N/A'}</li>
-                      <li>Capítulos: {formatMetric(detailManga.chapters)}</li>
-                      <li>Volúmenes: {formatMetric(detailManga.volumes)}</li>
-                      <li>Publicado desde: {detailManga.publishedFrom ? new Date(detailManga.publishedFrom).toLocaleDateString() : 'N/A'}</li>
-                      <li>Publicado hasta: {detailManga.publishedTo ? new Date(detailManga.publishedTo).toLocaleDateString() : 'N/A'}</li>
+                      <li>{t('common.status')}: {formatStatusLabel(detailManga.status)}</li>
+                      <li>{t('common.type')}: {detailManga.type || t('common.notAvailable')}</li>
+                      <li>{t('common.chapters')}: {formatMetric(detailManga.chapters, { fallback: t('common.notAvailable') })}</li>
+                      <li>{t('common.volumes')}: {formatMetric(detailManga.volumes, { fallback: t('common.notAvailable') })}</li>
+                      <li>{t('admin.publishedFrom')}: {detailManga.publishedFrom ? new Date(detailManga.publishedFrom).toLocaleDateString(locale) : t('common.notAvailable')}</li>
+                      <li>{t('admin.publishedTo')}: {detailManga.publishedTo ? new Date(detailManga.publishedTo).toLocaleDateString(locale) : t('common.notAvailable')}</li>
                     </ul>
                   </div>
 
                   <div>
-                    <h4>Autores</h4>
+                    <h4>{t('admin.authorsTitle')}</h4>
                     <ul className="external-detail-list">
                       {detailManga.authors?.length ? (
                         detailManga.authors.map((author) => (
                           <li key={author}>{author}</li>
                         ))
                       ) : (
-                        <li>Sin autores informados.</li>
+                        <li>{t('admin.noAuthors')}</li>
                       )}
                     </ul>
                   </div>
                 </div>
 
                 <div className="external-detail-copy">
-                  <h4>Sinopsis</h4>
-                  <p>{detailManga.synopsis || 'Sin sinopsis disponible.'}</p>
+                  <h4>{t('common.synopsis')}</h4>
+                  <p>{detailManga.synopsis || t('admin.noSynopsis')}</p>
                 </div>
 
                 <div className="external-detail-actions">
                   <button type="button" className="external-browser-btn secondary" onClick={() => handlePrefill(detailManga)}>
-                    Editar en formulario
+                    {t('common.editInForm')}
                   </button>
                   <button type="button" className="external-browser-btn primary" onClick={() => handleOpenImport(detailManga)}>
-                    Importar
+                    {t('common.import')}
                   </button>
                   {detailManga.url ? (
                     <a href={detailManga.url} target="_blank" rel="noreferrer" className="external-browser-link">
-                      Ver en MyAnimeList
+                      {t('admin.viewOnMal')}
                     </a>
                   ) : null}
                 </div>
@@ -653,14 +786,14 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
               ×
             </button>
 
-            <span className="external-browser-kicker">Confirmar importación</span>
+            <span className="external-browser-kicker">{t('admin.importConfirmKicker')}</span>
             <h3>{importCandidate.title}</h3>
-            <p>Podés revisar los datos en el formulario antes de guardar o importarlo directo al catálogo interno.</p>
+            <p>{t('admin.confirmImportMessage')}</p>
 
             <div className="import-decision-summary">
-              <span>Score {formatMetric(importCandidate.score)}</span>
+              <span>{t('common.score')} {formatMetric(importCandidate.score, { fallback: t('common.notAvailable') })}</span>
               <span>{formatStatusLabel(importCandidate.status)}</span>
-              <span>{formatCompactNumber(importCandidate.members)} seguidores</span>
+              <span>{t('admin.followersCount', { count: formatCompactNumber(importCandidate.members, locale, t('common.notAvailable')) })}</span>
             </div>
 
             <div className="import-decision-actions">
@@ -670,7 +803,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
                 onClick={handleCloseImport}
                 disabled={isImporting}
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -678,7 +811,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
                 onClick={() => handlePrefill(importCandidate)}
                 disabled={isImporting}
               >
-                Editar antes de guardar
+                {t('admin.editBeforeSaving')}
               </button>
               <button
                 type="button"
@@ -686,7 +819,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
                 onClick={handleImportNow}
                 disabled={isImporting}
               >
-                {isImporting ? 'Importando...' : 'Importar y abrir en admin'}
+                {isImporting ? t('admin.importing') : t('admin.importAndOpen')}
               </button>
             </div>
           </div>

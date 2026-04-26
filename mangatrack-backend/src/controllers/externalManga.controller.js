@@ -9,6 +9,7 @@ const searchExternalMangas = async (req, res) => {
     message: 'Mangas externos encontrados correctamente.',
     data: result.items,
     meta: result.meta,
+    pagination: result.pagination,
   });
 };
 
@@ -20,6 +21,7 @@ const getTopExternalMangas = async (req, res) => {
     message: 'Top mangas externos obtenidos correctamente.',
     data: result.items,
     meta: result.meta,
+    pagination: result.pagination,
   });
 };
 
@@ -56,6 +58,7 @@ const importExternalManga = async (req, res) => {
       manga: result.manga,
       imported: result.imported,
       duplicate: result.duplicate,
+      reason: result.duplicateReason,
     },
   });
 };

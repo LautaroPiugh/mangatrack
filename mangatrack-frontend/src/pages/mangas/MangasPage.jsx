@@ -3,19 +3,13 @@ import { useSearchParams, Link } from 'react-router-dom'
 
 import MangaCard from '../../components/manga/MangaCard.jsx'
 import useAuth from '../../hooks/useAuth.js'
+import useI18n from '../../hooks/useI18n.js'
 import mangaService from '../../services/mangaService.js'
-
-const statusFilters = [
-  { label: 'Todos', value: '' },
-  { label: 'En publicación', value: 'ongoing' },
-  { label: 'Finalizado', value: 'completed' },
-  { label: 'En pausa', value: 'hiatus' },
-  { label: 'Cancelado', value: 'cancelled' },
-]
 
 function MangasPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
+  const { t } = useI18n()
   const [mangas, setMangas] = useState([])
   const [meta, setMeta] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -26,6 +20,13 @@ function MangasPage() {
   const status = searchParams.get('status') || ''
   const genre = searchParams.get('genre') || ''
   const page = Number.parseInt(searchParams.get('page') || '1', 10)
+  const statusFilters = useMemo(() => ([
+    { label: t('common.all'), value: '' },
+    { label: t('mangaStatuses.ongoing'), value: 'ongoing' },
+    { label: t('mangaStatuses.completed'), value: 'completed' },
+    { label: t('mangaStatuses.hiatus'), value: 'hiatus' },
+    { label: t('mangaStatuses.cancelled'), value: 'cancelled' },
+  ]), [t])
 
   useEffect(() => {
     let isMounted = true
@@ -55,7 +56,7 @@ function MangasPage() {
           return
         }
 
-        setError(loadError.message || 'No se pudieron cargar los mangas.')
+        setError(loadError.message || t('mangasPage.errorTitle'))
       } finally {
         if (isMounted) {
           setIsLoading(false)
@@ -68,7 +69,7 @@ function MangasPage() {
     return () => {
       isMounted = false
     }
-  }, [genre, page, q, status])
+  }, [genre, page, q, status, t])
 
   const genreOptions = useMemo(() => {
     const values = new Set()
@@ -118,15 +119,15 @@ function MangasPage() {
     <div className="figma-page">
       <section className="list-header">
         <div>
-          <h1>Explorar Mangas</h1>
-          <p>Catálogo real conectado al backend. Buscá por título, autor, género o estado.</p>
-          {meta?.total ? <p className="list-summary">{meta.total} mangas encontrados</p> : null}
+          <h1>{t('mangasPage.title')}</h1>
+          <p>{t('mangasPage.subtitle')}</p>
+          {meta?.total ? <p className="list-summary">{t('mangasPage.resultsCount', { count: meta.total })}</p> : null}
         </div>
 
         <div className="list-header-actions">
           {isAdmin ? (
             <Link to="/admin/mangas/new" className="primary-action">
-              Nuevo manga
+              {t('admin.newMangaTitle')}
             </Link>
           ) : null}
 
@@ -151,13 +152,13 @@ function MangasPage() {
                 <button
                   key={item || 'all-genres'}
                   type="button"
-                  className={genre === item ? 'filter-pill filter-pill-active' : 'filter-pill'}
-                  onClick={() => updateFilters({ genre: item })}
-                >
-                  {item || 'Todos los géneros'}
-                </button>
-              ))}
-            </div>
+                className={genre === item ? 'filter-pill filter-pill-active' : 'filter-pill'}
+                onClick={() => updateFilters({ genre: item })}
+              >
+                  {item || t('mangasPage.genreAll')}
+              </button>
+            ))}
+          </div>
           ) : null}
         </div>
       </section>
@@ -166,15 +167,15 @@ function MangasPage() {
         {isLoading ? (
           <div className="empty-state">
             <span className="empty-state-icon">⌛</span>
-            <h2>Cargando mangas</h2>
-            <p>Estamos consultando el catálogo real.</p>
+            <h2>{t('mangasPage.loadingTitle')}</h2>
+            <p>{t('mangasPage.loadingMessage')}</p>
           </div>
         ) : null}
 
         {!isLoading && error ? (
           <div className="empty-state">
             <span className="empty-state-icon">!</span>
-            <h2>No se pudieron cargar los mangas</h2>
+            <h2>{t('mangasPage.errorTitle')}</h2>
             <p>{error}</p>
           </div>
         ) : null}
@@ -191,14 +192,14 @@ function MangasPage() {
               <div className="pagination-row">
                 <button
                   type="button"
-                  className="filter-pill"
-                  onClick={() => goToPage(page - 1)}
-                  disabled={page <= 1}
-                >
-                  Anterior
+                className="filter-pill"
+                onClick={() => goToPage(page - 1)}
+                disabled={page <= 1}
+              >
+                  {t('common.previous')}
                 </button>
                 <span className="pagination-copy">
-                  Página {meta.page} de {meta.totalPages}
+                  {t('common.pageOf', { current: meta.page, total: meta.totalPages })}
                 </span>
                 <button
                   type="button"
@@ -206,7 +207,7 @@ function MangasPage() {
                   onClick={() => goToPage(page + 1)}
                   disabled={page >= meta.totalPages}
                 >
-                  Siguiente
+                  {t('common.next')}
                 </button>
               </div>
             ) : null}
@@ -216,8 +217,8 @@ function MangasPage() {
         {!isLoading && !error && !mangas.length ? (
           <div className="empty-state">
             <span className="empty-state-icon">本</span>
-            <h2>No se encontraron mangas</h2>
-            <p>Probá con otra búsqueda o ajustá los filtros.</p>
+            <h2>{t('mangasPage.emptyTitle')}</h2>
+            <p>{t('mangasPage.emptyMessage')}</p>
           </div>
         ) : null}
       </div>

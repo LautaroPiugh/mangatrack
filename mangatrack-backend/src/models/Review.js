@@ -1,16 +1,18 @@
 const mongoose = require('mongoose');
 const { normalizeOptionalString } = require('../utils/user');
 
+const isValidRatingStep = (value) => Number.isFinite(value) && Number.isInteger(value * 2);
+
 const reviewSchema = new mongoose.Schema(
   {
     rating: {
       type: Number,
       required: [true, 'La puntuacion es obligatoria.'],
-      min: [1, 'La puntuacion minima es 1.'],
+      min: [0.5, 'La puntuacion minima es 0.5.'],
       max: [5, 'La puntuacion maxima es 5.'],
       validate: {
-        validator: Number.isInteger,
-        message: 'La puntuacion debe ser un numero entero.',
+        validator: isValidRatingStep,
+        message: 'La puntuacion debe ser un multiplo de 0.5.',
       },
     },
     content: {

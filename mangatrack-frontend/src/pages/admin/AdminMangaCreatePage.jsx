@@ -1,25 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import ExternalMangaSearch from '../../components/admin/ExternalMangaSearch.jsx'
 import MangaForm from '../../components/admin/MangaForm.jsx'
+import useI18n from '../../hooks/useI18n.js'
 import mangaService from '../../services/mangaService.js'
-
-const CREATE_MODES = [
-  {
-    value: 'import',
-    label: 'Buscar e importar',
-    description: 'Explorá MyAnimeList con filtros avanzados y traé datos listos para usar.',
-  },
-  {
-    value: 'manual',
-    label: 'Crear manualmente',
-    description: 'Completá toda la ficha desde cero o revisá una precarga antes de guardar.',
-  },
-]
 
 function AdminMangaCreatePage() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [mode, setMode] = useState('import')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -27,6 +16,18 @@ function AdminMangaCreatePage() {
   const [selectedFormVersion, setSelectedFormVersion] = useState(0)
 
   const hasExternalPrefill = Boolean(selectedExternalData?.title)
+  const createModes = useMemo(() => ([
+    {
+      value: 'import',
+      label: t('admin.searchAndImport'),
+      description: t('admin.searchAndImportDescription'),
+    },
+    {
+      value: 'manual',
+      label: t('admin.createManually'),
+      description: t('admin.createManuallyDescription'),
+    },
+  ]), [t])
 
   const handleUseExternalData = (externalManga) => {
     setSelectedExternalData(externalManga)
@@ -48,7 +49,7 @@ function AdminMangaCreatePage() {
       await mangaService.createManga(payload)
       navigate('/admin/mangas')
     } catch (err) {
-      const errorMessage = err.message || 'Error al crear manga'
+      const errorMessage = err.message || t('notifications.tryAgainMessage')
       setError(errorMessage)
     } finally {
       setIsLoading(false)
@@ -59,12 +60,12 @@ function AdminMangaCreatePage() {
     <div className="admin-manga-create-page">
       <div className="admin-create-hero">
         <div className="admin-page-header">
-          <h1>Nuevo manga</h1>
-          <p>Elegí si querés importar desde MyAnimeList o construir la ficha a mano dentro de MangaTrack.</p>
+          <h1>{t('admin.newMangaTitle')}</h1>
+          <p>{t('admin.newMangaSubtitle')}</p>
         </div>
 
-        <div className="admin-create-mode-switch" role="tablist" aria-label="Modo de creación">
-          {CREATE_MODES.map((item) => (
+        <div className="admin-create-mode-switch" role="tablist" aria-label={t('admin.newMangaTitle')}>
+          {createModes.map((item) => (
             <button
               key={item.value}
               type="button"
@@ -97,30 +98,30 @@ function AdminMangaCreatePage() {
 
           <aside className="admin-create-sidebar">
             <div className="admin-create-sidecard">
-              <span className="admin-create-sidecard-kicker">Flujo recomendado</span>
-              <h3>Importar, revisar y guardar</h3>
-              <p>Podés traer los datos de un manga externo al formulario, ajustarlos y guardarlos cuando estés conforme.</p>
+              <span className="admin-create-sidecard-kicker">{t('admin.recommendedFlow')}</span>
+              <h3>{t('admin.importReviewSave')}</h3>
+              <p>{t('admin.importReviewSaveMessage')}</p>
             </div>
 
             {hasExternalPrefill ? (
               <div className="admin-create-sidecard selected">
-                <span className="admin-create-sidecard-kicker">Precarga lista</span>
+                <span className="admin-create-sidecard-kicker">{t('admin.prefillReady')}</span>
                 <h3>{selectedExternalData.title}</h3>
-                <p>{selectedExternalData.titleEnglish || selectedExternalData.type || 'Ficha externa preparada para revisión manual.'}</p>
+                <p>{selectedExternalData.titleEnglish || selectedExternalData.type || t('admin.importedDataPrepared')}</p>
                 <div className="admin-create-sidecard-actions">
                   <button type="button" className="admin-mangas-create-btn" onClick={() => setMode('manual')}>
-                    Abrir formulario
+                    {t('admin.openForm')}
                   </button>
                   <button type="button" className="admin-create-link-btn" onClick={handleClearPrefill}>
-                    Limpiar precarga
+                    {t('admin.clearPrefill')}
                   </button>
                 </div>
               </div>
             ) : (
               <div className="admin-create-sidecard muted">
-                <span className="admin-create-sidecard-kicker">Tip</span>
-                <h3>Usá el modo manual sólo si hace falta</h3>
-                <p>La búsqueda externa ya trae título, autores, géneros, score, status y fechas para ahorrarte trabajo.</p>
+                <span className="admin-create-sidecard-kicker">{t('admin.importTip')}</span>
+                <h3>{t('admin.importTipTitle')}</h3>
+                <p>{t('admin.importTipMessage')}</p>
               </div>
             )}
           </aside>
@@ -129,22 +130,22 @@ function AdminMangaCreatePage() {
         <div className="admin-create-manual-layout">
           <aside className="admin-create-sidebar">
             <div className="admin-create-sidecard">
-              <span className="admin-create-sidecard-kicker">Modo manual</span>
-              <h3>{hasExternalPrefill ? 'Revisá la precarga' : 'Construí la ficha desde cero'}</h3>
+              <span className="admin-create-sidecard-kicker">{t('admin.manualMode')}</span>
+              <h3>{hasExternalPrefill ? t('admin.reviewPrefill') : t('admin.buildFromScratch')}</h3>
               <p>
                 {hasExternalPrefill
-                  ? 'Los campos ya fueron completados con datos externos. Revisalos y guardá cuando estés listo.'
-                  : 'Completá la información base, la portada y el estado de publicación del manga.'}
+                  ? t('admin.reviewPrefillMessage')
+                  : t('admin.buildFromScratchMessage')}
               </p>
             </div>
 
             {hasExternalPrefill ? (
               <div className="admin-create-sidecard selected compact">
-                <span className="admin-create-sidecard-kicker">Origen</span>
-                <h3>{selectedExternalData.source?.toUpperCase() || 'Externo'}</h3>
-                <p>{selectedExternalData.url || 'Datos importados a formulario.'}</p>
+                <span className="admin-create-sidecard-kicker">{t('admin.source')}</span>
+                <h3>{selectedExternalData.source?.toUpperCase() || t('admin.source')}</h3>
+                <p>{selectedExternalData.url || t('admin.importedDataPrepared')}</p>
                 <button type="button" className="admin-create-link-btn" onClick={() => setMode('import')}>
-                  Volver a importar
+                  {t('admin.backToImport')}
                 </button>
               </div>
             ) : null}
@@ -156,11 +157,11 @@ function AdminMangaCreatePage() {
               initialData={selectedExternalData}
               onSubmit={handleSubmit}
               isLoading={isLoading}
-              heading={hasExternalPrefill ? 'Revisar y guardar manga' : 'Crear manga manualmente'}
+              heading={hasExternalPrefill ? t('admin.reviewAndSave') : t('admin.createLocalManga')}
               description={hasExternalPrefill
-                ? 'Ajustá la ficha precargada antes de publicarla en el catálogo interno.'
-                : 'Completá cada bloque del formulario para crear una entrada local de MangaTrack.'}
-              submitLabel="Guardar manga"
+                ? t('admin.reviewAndSaveDescription')
+                : t('admin.createLocalMangaDescription')}
+              submitLabel={t('admin.saveManga')}
             />
           </div>
         </div>

@@ -1,13 +1,14 @@
 const mangaRepository = require('../repositories/manga.repository');
 const reviewRepository = require('../repositories/review.repository');
 const userRepository = require('../repositories/user.repository');
+const { recordActivitySafely } = require('./activity.service');
+const { buildUserStats } = require('./user-stats.service');
 const { NotFoundError } = require('../utils/errors');
 const { sanitizeUser } = require('../utils/user');
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
-const TOP_GENRES_LIMIT = 3;
 
 const parsePagination = (query = {}) => {
   const page = Math.max(Number.parseInt(query.page, 10) || DEFAULT_PAGE, 1);
@@ -57,21 +58,6 @@ const getUserOrThrow = async (userId, options = {}) => {
   return user;
 };
 
-const buildUserStats = async (user) => {
-  const [reviewSummary, topGenres] = await Promise.all([
-    reviewRepository.getUserRatingSummary(user._id || user.id),
-    reviewRepository.getTopGenresByUserId(user._id || user.id, TOP_GENRES_LIMIT),
-  ]);
-
-  return {
-    reviewsCount: reviewSummary.reviewsCount,
-    favoritesCount: user.favorites?.length || 0,
-    watchlistCount: user.watchlist?.length || 0,
-    averageRatingGiven: reviewSummary.averageRatingGiven,
-    topGenres,
-  };
-};
-
 const getLibraryItems = async (userId, listName) => {
   const user = await getUserOrThrow(userId, { library: listName });
   return user[listName] || [];
@@ -79,6 +65,9 @@ const getLibraryItems = async (userId, listName) => {
 
 const updateLibraryItems = async (userId, listName, operation, mangaId) => {
   await ensureMangaExists(mangaId);
+  const currentUser = await getUserOrThrow(userId);
+  const alreadyExists = (currentUser[listName] || [])
+    .some((item) => item.toString() === mangaId.toString());
 
   const user = operation === 'add'
     ? await userRepository.addToLibrary(userId, listName, mangaId)
@@ -86,6 +75,23 @@ const updateLibraryItems = async (userId, listName, operation, mangaId) => {
 
   if (!user) {
     throw new NotFoundError('Usuario no encontrado.');
+  }
+
+  if (operation === 'add' && !alreadyExists) {
+    const activityType = listName === 'favorites'
+      ? 'manga_favorited'
+      : listName === 'watchlist'
+        ? 'manga_added_to_watchlist'
+        : null;
+
+    if (activityType) {
+      await recordActivitySafely({
+        user: userId,
+        type: activityType,
+        manga: mangaId,
+        visibility: 'public',
+      });
+    }
   }
 
   return user[listName] || [];
@@ -97,7 +103,6 @@ const getMyProfile = async (userId) => {
 
   return {
     ...sanitizeUser(user),
-    createdAt: user.createdAt,
     stats,
   };
 };

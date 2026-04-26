@@ -141,6 +141,27 @@ const buildImportFingerprint = (externalManga = {}) => {
   };
 };
 
+const resolveDuplicateReason = (manga, fingerprint) => {
+  if (
+    manga?.external?.source
+    && manga?.external?.externalId
+    && manga.external.source === fingerprint.externalSource
+    && Number(manga.external.externalId) === Number(fingerprint.externalId)
+  ) {
+    return 'external_source_id';
+  }
+
+  if (fingerprint.slug && manga?.slug === fingerprint.slug) {
+    return 'slug';
+  }
+
+  if (fingerprint.normalizedTitle && manga?.normalizedTitle === fingerprint.normalizedTitle) {
+    return 'normalized_title';
+  }
+
+  return 'title';
+};
+
 const buildImportedMangaPayload = (externalManga = {}, userId) => {
   const generatedSlug = generateSlug(externalManga.title || '') || `${externalManga.source || 'external'}-${externalManga.externalId}`;
   const authors = Array.isArray(externalManga.authors) ? externalManga.authors : [];
@@ -301,22 +322,27 @@ const importExternalManga = async (payload = {}, userId) => {
     };
   }
 
-  const duplicate = await mangaRepository.findImportCandidate(buildImportFingerprint(externalManga), {
+  const fingerprint = buildImportFingerprint(externalManga);
+  const duplicate = await mangaRepository.findImportCandidate(fingerprint, {
     populateCreatedBy: false,
   });
 
   if (duplicate) {
+    const duplicateReason = resolveDuplicateReason(duplicate, fingerprint);
+
     console.info('[external-manga] import skipped duplicate', {
       source,
       externalId: externalManga.externalId,
       duplicateId: duplicate._id.toString(),
       duplicateSlug: duplicate.slug,
+      reason: duplicateReason,
     });
 
     return {
       manga: duplicate,
       imported: false,
       duplicate: true,
+      duplicateReason,
       message: 'El manga ya existe en MangaTrack.',
     };
   }
@@ -334,6 +360,7 @@ const importExternalManga = async (payload = {}, userId) => {
     manga: createdManga,
     imported: true,
     duplicate: false,
+    duplicateReason: null,
     message: 'Manga importado correctamente.',
   };
 };

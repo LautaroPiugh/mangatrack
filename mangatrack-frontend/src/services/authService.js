@@ -1,24 +1,22 @@
 import {
   clearStoredSession,
-  request,
   setStoredSession,
-  unwrapData,
 } from './api.js'
+import axiosClient from '../api/axiosClient.js'
+import { getPayloadData, runRequest } from './http.js'
 
 export const authService = {
   async login(credentials) {
-    const payload = await request('/auth/login', {
-      method: 'POST',
-      body: credentials,
-    })
-    const data = unwrapData(payload)
+    const data = await runRequest(async () => {
+      const response = await axiosClient.post('/auth/login', credentials)
+      return getPayloadData(response)
+    }, 'No se pudo iniciar sesión.')
 
     if (data?.token && data?.user) {
       setStoredSession({ token: data.token, user: data.user })
     }
 
     return {
-      ...payload,
       data,
       token: data?.token,
       user: data?.user,
@@ -26,18 +24,16 @@ export const authService = {
   },
 
   async register(registerPayload) {
-    const payload = await request('/auth/register', {
-      method: 'POST',
-      body: registerPayload,
-    })
-    const data = unwrapData(payload)
+    const data = await runRequest(async () => {
+      const response = await axiosClient.post('/auth/register', registerPayload)
+      return getPayloadData(response)
+    }, 'No se pudo completar el registro.')
 
     if (data?.token && data?.user) {
       setStoredSession({ token: data.token, user: data.user })
     }
 
     return {
-      ...payload,
       data,
       token: data?.token,
       user: data?.user,
@@ -45,19 +41,22 @@ export const authService = {
   },
 
   async verifyAccount(token) {
-    const payload = await request(`/auth/verify/${token}`)
-    const data = unwrapData(payload)
+    const data = await runRequest(async () => {
+      const response = await axiosClient.get(`/auth/verify/${token}`)
+      return getPayloadData(response)
+    }, 'No se pudo verificar la cuenta.')
 
     return {
-      ...payload,
       data,
       user: data?.user,
     }
   },
 
   async getMe() {
-    const payload = await request('/auth/me')
-    const data = unwrapData(payload)
+    const data = await runRequest(async () => {
+      const response = await axiosClient.get('/auth/me')
+      return getPayloadData(response)
+    }, 'No se pudo obtener el usuario autenticado.')
     return data?.user ?? data
   },
 

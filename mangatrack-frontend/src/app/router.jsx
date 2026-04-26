@@ -6,6 +6,7 @@ import ProtectedRoute from '../routes/ProtectedRoute.jsx'
 import AdminRoute from '../routes/AdminRoute.jsx'
 import PublicOnlyRoute from '../routes/PublicOnlyRoute.jsx'
 import HomePage from '../pages/HomePage.jsx'
+import FeedPage from '../pages/FeedPage.jsx'
 import LoginPage from '../pages/auth/LoginPage.jsx'
 import RegisterPage from '../pages/auth/RegisterPage.jsx'
 import VerifyAccountPage from '../pages/auth/VerifyAccountPage.jsx'
@@ -14,6 +15,10 @@ import MangaDetailPage from '../pages/mangas/MangaDetailPage.jsx'
 import ReviewsPage from '../pages/reviews/ReviewsPage.jsx'
 import ProfilePage from '../pages/user/ProfilePage.jsx'
 import LibraryPage from '../pages/user/LibraryPage.jsx'
+import UserPublicProfilePage from '../pages/user/UserPublicProfilePage.jsx'
+import MyListsPage from '../pages/user/MyListsPage.jsx'
+import MangaListDetailPage from '../pages/user/MangaListDetailPage.jsx'
+import SettingsProfilePage from '../pages/user/SettingsProfilePage.jsx'
 import AdminMangasPage from '../pages/admin/AdminMangasPage.jsx'
 import AdminMangaCreatePage from '../pages/admin/AdminMangaCreatePage.jsx'
 import AdminMangaEditPage from '../pages/admin/AdminMangaEditPage.jsx'
@@ -42,10 +47,30 @@ const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       {
+        index: true,
+        element: <FeedPage />,
+      },
+      {
+        path: 'feed',
+        element: <FeedPage />,
+      },
+      {
+        path: 'users/:username',
+        element: <UserPublicProfilePage />,
+      },
+      {
+        path: 'users/:username/lists/:listId',
+        element: <MangaListDetailPage />,
+      },
+      {
+        path: 'lists/:id',
+        element: <MangaListDetailPage />,
+      },
+      {
         element: <ProtectedRoute />,
         children: [
           {
-            index: true,
+            path: 'home',
             element: <HomePage />,
           },
           {
@@ -67,6 +92,14 @@ const router = createBrowserRouter([
           {
             path: 'library',
             element: <LibraryPage />,
+          },
+          {
+            path: 'lists',
+            element: <MyListsPage />,
+          },
+          {
+            path: 'settings/profile',
+            element: <SettingsProfilePage />,
           },
         ],
       },

@@ -2,6 +2,7 @@ const { isValidObjectId } = require('mongoose');
 
 const mangaRepository = require('../repositories/manga.repository');
 const reviewRepository = require('../repositories/review.repository');
+const { recordActivitySafely } = require('./activity.service');
 const { recalculateMangaRating } = require('./manga-rating.service');
 const {
   BadRequestError,
@@ -204,6 +205,18 @@ const createReview = async (payload, currentUser) => {
   });
 
   await syncMangaRatingSummary(reviewPayload.manga);
+  if (review.isPublic !== false) {
+    await recordActivitySafely({
+      user: currentUser.id,
+      type: 'review_created',
+      manga: reviewPayload.manga,
+      review: review._id,
+      visibility: 'public',
+      metadata: {
+        rating: review.rating,
+      },
+    });
+  }
 
   return {
     created: true,

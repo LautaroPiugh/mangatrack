@@ -3,6 +3,7 @@ const { normalizeEmail, normalizeUsername } = require('../utils/user');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const mangaCardProjection = 'title slug author artist genres coverUrl status averageRating ratingsCount';
+const publicUserProjection = 'name username displayName avatar bio createdAt';
 const libraryPopulation = {
   favorites: {
     path: 'favorites',
@@ -22,6 +23,24 @@ const applyLibraryPopulation = (query, listName) => {
     .forEach((item) => {
       query.populate(libraryPopulation[item]);
     });
+
+  return query;
+};
+
+const applySocialPopulation = (query, options = {}) => {
+  if (options.populateFollowers) {
+    query.populate({
+      path: 'followers',
+      select: publicUserProjection,
+    });
+  }
+
+  if (options.populateFollowing) {
+    query.populate({
+      path: 'following',
+      select: publicUserProjection,
+    });
+  }
 
   return query;
 };
@@ -117,6 +136,17 @@ const findByUsername = (username, options = {}) => {
   return query.exec();
 };
 
+const findByUsernameWithLibrary = (username, listName, options = {}) => {
+  const query = User.findOne({ username: normalizeUsername(username) });
+  const sensitiveProjection = buildSensitiveProjection(options);
+
+  if (sensitiveProjection) {
+    query.select(sensitiveProjection);
+  }
+
+  return applyLibraryPopulation(query, listName).exec();
+};
+
 const findByVerificationToken = (verificationToken, options = {}) => {
   const query = User.findOne({ verificationToken });
   const sensitiveProjection = buildSensitiveProjection({
@@ -188,6 +218,28 @@ const findByIdWithLibrary = (id, listName, options = {}) => {
   return applyLibraryPopulation(query, listName).exec();
 };
 
+const findByIdWithSocial = (id, options = {}) => {
+  const query = User.findById(id);
+  const sensitiveProjection = buildSensitiveProjection(options);
+
+  if (sensitiveProjection) {
+    query.select(sensitiveProjection);
+  }
+
+  return applySocialPopulation(query, options).exec();
+};
+
+const findByUsernameWithSocial = (username, options = {}) => {
+  const query = User.findOne({ username: normalizeUsername(username) });
+  const sensitiveProjection = buildSensitiveProjection(options);
+
+  if (sensitiveProjection) {
+    query.select(sensitiveProjection);
+  }
+
+  return applySocialPopulation(query, options).exec();
+};
+
 const addToLibrary = (id, listName, mangaId, options = {}) => {
   const query = User.findByIdAndUpdate(
     id,
@@ -233,13 +285,12 @@ const removeFromLibrary = (id, listName, mangaId, options = {}) => {
 };
 
 const updatePreferences = (id, preferences, options = {}) => {
+  const normalizedPreferences = Object.fromEntries(
+    Object.entries(preferences || {}).map(([key, value]) => [`preferences.${key}`, value]),
+  );
   const query = User.findByIdAndUpdate(
     id,
-    {
-      preferences: {
-        ...preferences,
-      },
-    },
+    { $set: normalizedPreferences },
     {
       new: true,
       runValidators: true,
@@ -254,11 +305,69 @@ const updatePreferences = (id, preferences, options = {}) => {
   return query.exec();
 };
 
+const isFollowing = async (userId, targetUserId) => Boolean(await User.exists({
+  _id: userId,
+  following: targetUserId,
+}));
+
+const addFollowing = (userId, targetUserId) => User.findByIdAndUpdate(
+  userId,
+  {
+    $addToSet: {
+      following: targetUserId,
+    },
+  },
+  {
+    new: true,
+    runValidators: true,
+  },
+).exec();
+
+const removeFollowing = (userId, targetUserId) => User.findByIdAndUpdate(
+  userId,
+  {
+    $pull: {
+      following: targetUserId,
+    },
+  },
+  {
+    new: true,
+    runValidators: true,
+  },
+).exec();
+
+const addFollower = (userId, followerUserId) => User.findByIdAndUpdate(
+  userId,
+  {
+    $addToSet: {
+      followers: followerUserId,
+    },
+  },
+  {
+    new: true,
+    runValidators: true,
+  },
+).exec();
+
+const removeFollower = (userId, followerUserId) => User.findByIdAndUpdate(
+  userId,
+  {
+    $pull: {
+      followers: followerUserId,
+    },
+  },
+  {
+    new: true,
+    runValidators: true,
+  },
+).exec();
+
 module.exports = {
   findAll,
   findById,
   findByEmail,
   findByUsername,
+  findByUsernameWithLibrary,
   findByVerificationToken,
   existsById,
   existsByEmail,
@@ -269,7 +378,14 @@ module.exports = {
   markAsVerified,
   deleteById,
   findByIdWithLibrary,
+  findByIdWithSocial,
+  findByUsernameWithSocial,
   addToLibrary,
   removeFromLibrary,
   updatePreferences,
+  isFollowing,
+  addFollowing,
+  removeFollowing,
+  addFollower,
+  removeFollower,
 };

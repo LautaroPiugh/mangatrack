@@ -1,56 +1,52 @@
-import { request, unwrapData } from './api.js'
-
-const buildQuery = (params = {}) => {
-  const searchParams = new URLSearchParams()
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      searchParams.set(key, value)
-    }
-  })
-
-  const query = searchParams.toString()
-  return query ? `?${query}` : ''
-}
+import axiosClient from '../api/axiosClient.js'
+import { buildParams, getCollectionPayload, getPayloadData, runRequest } from './http.js'
 
 export const mangaService = {
   async getMangas(params) {
-    const payload = await request(`/mangas${buildQuery(params)}`)
-
-    return {
-      items: unwrapData(payload),
-      meta: payload?.meta || null,
-    }
+    return runRequest(async () => {
+      const response = await axiosClient.get('/mangas', {
+        params: buildParams(params),
+      })
+      return getCollectionPayload(response)
+    }, 'No se pudieron cargar los mangas.')
   },
   async getManga(idOrSlug) {
-    return unwrapData(await request(`/mangas/${idOrSlug}`))
+    return runRequest(async () => {
+      const response = await axiosClient.get(`/mangas/${idOrSlug}`)
+      return getPayloadData(response)
+    }, 'No se pudo cargar el manga.')
   },
   async getMangaReviews(id, params) {
-    const payload = await request(`/mangas/${id}/reviews${buildQuery(params)}`)
+    return runRequest(async () => {
+      const response = await axiosClient.get(`/mangas/${id}/reviews`, {
+        params: buildParams(params),
+      })
 
-    return {
-      manga: payload?.data?.manga || null,
-      reviewSummary: payload?.data?.reviewSummary || null,
-      items: payload?.data?.reviews || [],
-      meta: payload?.meta || null,
-    }
+      return {
+        manga: response.data?.data?.manga || null,
+        reviewSummary: response.data?.data?.reviewSummary || null,
+        items: response.data?.data?.reviews || [],
+        meta: response.data?.meta || null,
+      }
+    }, 'No se pudieron cargar las reseñas del manga.')
   },
   async createManga(payload) {
-    return unwrapData(await request('/mangas', {
-      method: 'POST',
-      body: payload,
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.post('/mangas', payload)
+      return getPayloadData(response)
+    }, 'No se pudo crear el manga.')
   },
   async updateManga(id, payload) {
-    return unwrapData(await request(`/mangas/${id}`, {
-      method: 'PUT',
-      body: payload,
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.put(`/mangas/${id}`, payload)
+      return getPayloadData(response)
+    }, 'No se pudo actualizar el manga.')
   },
   async deleteManga(id) {
-    return unwrapData(await request(`/mangas/${id}`, {
-      method: 'DELETE',
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.delete(`/mangas/${id}`)
+      return getPayloadData(response)
+    }, 'No se pudo eliminar el manga.')
   },
 }
 

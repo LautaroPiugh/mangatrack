@@ -1,13 +1,8 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import useAuth from '../hooks/useAuth.js'
 import userService from '../services/userService.js'
-
-const ThemeContext = createContext({
-  theme: 'dark',
-  toggleTheme: () => {},
-  isLoading: false,
-})
+import ThemeContext from './theme-context.js'
 
 const THEME_KEY = 'mangatrack-theme'
 
@@ -28,46 +23,67 @@ const setStoredTheme = (theme) => {
 }
 
 export function ThemeProvider({ children }) {
-  const { user, isAuthenticated } = useAuth()
-  const [theme, setTheme] = useState(getStoredTheme)
+  const { user, isAuthenticated, refreshUser } = useAuth()
+  const userKey = user?.id || user?._id || 'guest'
+  const [pendingTheme, setPendingTheme] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const storedTheme = getStoredTheme()
+  const userTheme = user?.preferences?.theme || null
+  const optimisticTheme = pendingTheme?.userKey === userKey && pendingTheme.value !== userTheme
+    ? pendingTheme.value
+    : null
+  const theme = optimisticTheme || userTheme || storedTheme
 
   useEffect(() => {
-    if (isAuthenticated && user?.preferences?.theme) {
-      setTheme(user.preferences.theme)
-    } else {
-      setTheme(getStoredTheme())
-    }
-  }, [isAuthenticated, user])
-
-  useEffect(() => {
-    document.documentElement.className = theme
+    document.documentElement.classList.remove('dark', 'light')
+    document.documentElement.classList.add(theme)
+    document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
-  const toggleTheme = async () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(newTheme)
-    setStoredTheme(newTheme)
+  const setTheme = useCallback(async (nextTheme, options = {}) => {
+    if (!['dark', 'light'].includes(nextTheme)) {
+      return
+    }
 
-    if (isAuthenticated) {
+    const previousTheme = theme
+    const shouldPersist = options.persist !== false
+
+    setPendingTheme({
+      userKey,
+      value: nextTheme,
+    })
+    setStoredTheme(nextTheme)
+
+    if (isAuthenticated && shouldPersist) {
       setIsLoading(true)
       try {
-        await userService.updatePreferences({ theme: newTheme })
-      } catch (error) {
-        // Revert on error
-        setTheme(theme)
-        setStoredTheme(theme)
+        await userService.updatePreferences({ theme: nextTheme })
+        await refreshUser()
+      } catch {
+        setStoredTheme(previousTheme)
       } finally {
+        setPendingTheme(null)
         setIsLoading(false)
       }
+      return
     }
-  }
 
-  const value = {
+    if (isAuthenticated && !shouldPersist) {
+      return
+    }
+  }, [isAuthenticated, refreshUser, theme, userKey])
+
+  const toggleTheme = useCallback(async () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark'
+    await setTheme(newTheme)
+  }, [setTheme, theme])
+
+  const value = useMemo(() => ({
     theme,
     toggleTheme,
+    setTheme,
     isLoading,
-  }
+  }), [isLoading, setTheme, theme, toggleTheme])
 
   return (
     <ThemeContext.Provider value={value}>
@@ -75,13 +91,3 @@ export function ThemeProvider({ children }) {
     </ThemeContext.Provider>
   )
 }
-
-export function useTheme() {
-  const context = useContext(ThemeContext)
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider')
-  }
-  return context
-}
-
-export default ThemeContext

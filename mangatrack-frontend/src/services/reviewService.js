@@ -1,54 +1,48 @@
-import { request, unwrapData } from './api.js'
-
-const buildQuery = (params = {}) => {
-  const searchParams = new URLSearchParams()
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      searchParams.set(key, value)
-    }
-  })
-
-  const query = searchParams.toString()
-  return query ? `?${query}` : ''
-}
+import axiosClient from '../api/axiosClient.js'
+import { buildParams, getCollectionPayload, getPayloadData, runRequest } from './http.js'
 
 export const reviewService = {
   async getReviews(params) {
-    const payload = await request(`/reviews${buildQuery(params)}`)
-
-    return {
-      items: unwrapData(payload),
-      meta: payload?.meta || null,
-    }
+    return runRequest(async () => {
+      const response = await axiosClient.get('/reviews', {
+        params: buildParams(params),
+      })
+      return getCollectionPayload(response)
+    }, 'No se pudieron cargar las reseñas.')
   },
   async getRecentReviews(params) {
-    return unwrapData(await request(`/reviews/recent${buildQuery(params)}`))
+    return runRequest(async () => {
+      const response = await axiosClient.get('/reviews/recent', {
+        params: buildParams(params),
+      })
+      return getPayloadData(response) || []
+    }, 'No se pudieron cargar las reseñas recientes.')
   },
   async getMyReviews(params) {
-    const payload = await request(`/reviews/me${buildQuery(params)}`)
-
-    return {
-      items: unwrapData(payload),
-      meta: payload?.meta || null,
-    }
+    return runRequest(async () => {
+      const response = await axiosClient.get('/reviews/me', {
+        params: buildParams(params),
+      })
+      return getCollectionPayload(response)
+    }, 'No se pudieron cargar tus reseñas.')
   },
   async createOrUpdateReview(payload) {
-    return unwrapData(await request('/reviews', {
-      method: 'POST',
-      body: payload,
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.post('/reviews', payload)
+      return getPayloadData(response)
+    }, 'No se pudo guardar la reseña.')
   },
   async updateReview(id, payload) {
-    return unwrapData(await request(`/reviews/${id}`, {
-      method: 'PUT',
-      body: payload,
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.put(`/reviews/${id}`, payload)
+      return getPayloadData(response)
+    }, 'No se pudo actualizar la reseña.')
   },
   async deleteReview(id) {
-    return unwrapData(await request(`/reviews/${id}`, {
-      method: 'DELETE',
-    }))
+    return runRequest(async () => {
+      const response = await axiosClient.delete(`/reviews/${id}`)
+      return getPayloadData(response)
+    }, 'No se pudo eliminar la reseña.')
   },
 }
 

@@ -1,4 +1,5 @@
 const userLibraryService = require('../services/user-library.service');
+const userProfileService = require('../services/user-profile.service');
 
 const getMyProfile = async (req, res) => {
   const profile = await userLibraryService.getMyProfile(req.user.id);
@@ -96,8 +97,78 @@ const updatePreferences = async (req, res) => {
   });
 };
 
+const getPublicProfile = async (req, res) => {
+  const profile = await userProfileService.getPublicProfile(req.params.username, req.user || null);
+
+  res.status(200).json({
+    success: true,
+    message: 'Perfil público obtenido correctamente.',
+    data: profile,
+  });
+};
+
+const updateMyProfile = async (req, res) => {
+  const profile = await userProfileService.updateMyProfile(req.user.id, req.body);
+
+  res.status(200).json({
+    success: true,
+    message: 'Perfil actualizado correctamente.',
+    data: profile,
+  });
+};
+
+const followUser = async (req, res) => {
+  const result = await userProfileService.followUser(req.user.id, req.params.username);
+
+  res.status(200).json({
+    success: true,
+    message: 'Ahora sigues a este usuario.',
+    data: result,
+  });
+};
+
+const unfollowUser = async (req, res) => {
+  const result = await userProfileService.unfollowUser(req.user.id, req.params.username);
+
+  res.status(200).json({
+    success: true,
+    message: 'Dejaste de seguir a este usuario.',
+    data: result,
+  });
+};
+
+const getFollowers = async (req, res) => {
+  const result = await userProfileService.getFollowers(req.params.username);
+
+  res.status(200).json({
+    success: true,
+    message: 'Seguidores obtenidos correctamente.',
+    data: result.items,
+    meta: {
+      total: result.items.length,
+      user: result.user,
+    },
+  });
+};
+
+const getFollowing = async (req, res) => {
+  const result = await userProfileService.getFollowing(req.params.username);
+
+  res.status(200).json({
+    success: true,
+    message: 'Seguidos obtenidos correctamente.',
+    data: result.items,
+    meta: {
+      total: result.items.length,
+      user: result.user,
+    },
+  });
+};
+
 module.exports = {
   getMyProfile,
+  getPublicProfile,
+  updateMyProfile,
   getMyLibrary,
   getFavorites,
   addFavorite,
@@ -106,4 +177,8 @@ module.exports = {
   addToWatchlist,
   removeFromWatchlist,
   updatePreferences,
+  followUser,
+  unfollowUser,
+  getFollowers,
+  getFollowing,
 };

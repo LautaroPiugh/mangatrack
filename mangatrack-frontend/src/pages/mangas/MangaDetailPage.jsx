@@ -2,8 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import ImageWithFallback from '../../components/common/ImageWithFallback.jsx'
+import AddToListModal from '../../components/manga/AddToListModal.jsx'
 import ReviewCard from '../../components/review/ReviewCard.jsx'
+import StarRatingDisplay from '../../components/review/StarRatingDisplay.jsx'
+import StarRatingInput from '../../components/review/StarRatingInput.jsx'
 import useFeedback from '../../hooks/useFeedback.js'
+import useI18n from '../../hooks/useI18n.js'
 import useUserLibrary from '../../hooks/useUserLibrary.js'
 import mangaService from '../../services/mangaService.js'
 import reviewService from '../../services/reviewService.js'
@@ -11,13 +15,6 @@ import reviewService from '../../services/reviewService.js'
 const initialReviewForm = {
   rating: 0,
   content: '',
-}
-
-const statusLabels = {
-  ongoing: 'En publicación',
-  completed: 'Finalizado',
-  hiatus: 'En pausa',
-  cancelled: 'Cancelado',
 }
 
 const getReviewFormFromManga = (manga) => ({
@@ -28,6 +25,7 @@ const getReviewFormFromManga = (manga) => ({
 function MangaDetailPage() {
   const { slug } = useParams()
   const { notify } = useFeedback()
+  const { language, t } = useI18n()
   const {
     isFavorite,
     isInWatchlist,
@@ -52,8 +50,16 @@ function MangaDetailPage() {
   const [isSavingReview, setIsSavingReview] = useState(false)
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false)
   const [isWatchlistLoading, setIsWatchlistLoading] = useState(false)
+  const [isListModalOpen, setIsListModalOpen] = useState(false)
   const loadedSlugRef = useRef('')
   const isReviewFormOpenRef = useRef(false)
+  const locale = language === 'en' ? 'en-US' : 'es-AR'
+  const statusLabels = {
+    ongoing: t('mangaStatuses.ongoing'),
+    completed: t('mangaStatuses.completed'),
+    hiatus: t('mangaStatuses.hiatus'),
+    cancelled: t('mangaStatuses.cancelled'),
+  }
 
   useEffect(() => {
     isReviewFormOpenRef.current = isReviewFormOpen
@@ -97,7 +103,7 @@ function MangaDetailPage() {
           return
         }
 
-        setError(loadError.message || 'No se pudo cargar el manga.')
+        setError(loadError.message || t('mangaDetail.loadErrorTitle'))
       } finally {
         if (isMounted) {
           setIsLoading(false)
@@ -111,7 +117,7 @@ function MangaDetailPage() {
     return () => {
       isMounted = false
     }
-  }, [reviewsPage, reviewsSort, slug])
+  }, [reviewsPage, reviewsSort, slug, t])
 
   const mangaId = manga?._id || manga?.id || null
   const favoriteActive = mangaId
@@ -122,7 +128,7 @@ function MangaDetailPage() {
     : Boolean(manga?.isInWatchlist)
   const averageRating = manga?.averageRating ?? manga?.reviewSummary?.averageRating ?? 0
   const ratingsCount = manga?.ratingsCount ?? manga?.reviewSummary?.totalReviews ?? 0
-  const synopsis = manga?.synopsis || 'Todavía no hay sinopsis cargada para este manga.'
+  const synopsis = manga?.synopsis || t('mangaDetail.noSynopsis')
   const synopsisNeedsToggle = synopsis.length > 280
   const visibleSynopsis = synopsisNeedsToggle && !isSynopsisExpanded
     ? `${synopsis.slice(0, 280).trim()}...`
@@ -139,14 +145,24 @@ function MangaDetailPage() {
     try {
       if (favoriteActive) {
         await removeFavorite(mangaId)
+        notify({
+          variant: 'info',
+          title: t('notifications.favoriteRemovedTitle'),
+          message: t('notifications.favoriteRemovedMessage', { title: manga.title }),
+        })
       } else {
         await addFavorite(mangaId)
+        notify({
+          variant: 'success',
+          title: t('notifications.favoriteAddedTitle'),
+          message: t('notifications.favoriteAddedMessage', { title: manga.title }),
+        })
       }
     } catch (actionError) {
       notify({
         variant: 'error',
-        title: 'No se pudo actualizar favoritos',
-        message: actionError.message || 'Intentá nuevamente.',
+        title: t('notifications.favoritesErrorTitle'),
+        message: actionError.message || t('notifications.tryAgainMessage'),
       })
     } finally {
       setIsFavoriteLoading(false)
@@ -163,14 +179,24 @@ function MangaDetailPage() {
     try {
       if (watchlistActive) {
         await removeFromWatchlist(mangaId)
+        notify({
+          variant: 'info',
+          title: t('notifications.watchlistRemovedTitle'),
+          message: t('notifications.watchlistRemovedMessage', { title: manga.title }),
+        })
       } else {
         await addToWatchlist(mangaId)
+        notify({
+          variant: 'success',
+          title: t('notifications.watchlistAddedTitle'),
+          message: t('notifications.watchlistAddedMessage', { title: manga.title }),
+        })
       }
     } catch (actionError) {
       notify({
         variant: 'error',
-        title: 'No se pudo actualizar pendientes',
-        message: actionError.message || 'Intentá nuevamente.',
+        title: t('notifications.watchlistErrorTitle'),
+        message: actionError.message || t('notifications.tryAgainMessage'),
       })
     } finally {
       setIsWatchlistLoading(false)
@@ -219,14 +245,23 @@ function MangaDetailPage() {
 
       notify({
         variant: 'success',
-        title: userReview ? 'Reseña actualizada' : 'Reseña creada',
-        message: 'La reseña se guardó correctamente.',
+        title: userReview ? t('notifications.reviewUpdatedTitle') : t('notifications.reviewCreatedTitle'),
+        message: t('notifications.reviewSavedMessage'),
       })
     } catch (submitError) {
-      setReviewError(submitError.message || 'No se pudo guardar la reseña.')
+      setReviewError(submitError.message || t('mangaDetail.saveErrorMessage'))
     } finally {
       setIsSavingReview(false)
     }
+  }
+
+  const handleListAdded = (list) => {
+    setIsListModalOpen(false)
+    notify({
+      variant: 'success',
+      title: t('notifications.listItemAddedTitle'),
+      message: t('notifications.listItemAddedMessage', { manga: manga.title, list: list.title }),
+    })
   }
 
   if (isLoading) {
@@ -262,8 +297,8 @@ function MangaDetailPage() {
         <div className="figma-content">
           <section className="empty-state not-found-state">
             <span className="empty-state-icon">!</span>
-            <h2>No se pudo cargar el manga</h2>
-            <p>{error || 'El manga solicitado no está disponible.'}</p>
+            <h2>{t('mangaDetail.loadErrorTitle')}</h2>
+            <p>{error || t('mangaDetail.unavailableMessage')}</p>
           </section>
         </div>
       </div>
@@ -286,22 +321,18 @@ function MangaDetailPage() {
           <div className="manga-detail-copy">
             <div className="manga-detail-head">
               <h1>{manga.title}</h1>
-              <p>{manga.author || manga.artist || 'Autor no disponible'}</p>
+              <p>{manga.author || manga.artist || t('mangaDetail.authorUnavailable')}</p>
             </div>
 
             <div className="manga-detail-rating">
-              <div className="figma-review-stars">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <span key={star} className={star <= Math.round(averageRating) ? 'star-filled' : 'star-empty'}>★</span>
-                ))}
-              </div>
+              <StarRatingDisplay value={averageRating} size="md" />
               <strong>{averageRating ? averageRating.toFixed(1) : '0.0'}</strong>
-              <span>{Number(ratingsCount).toLocaleString('es-AR')} valoraciones</span>
+              <span>{t('mangaDetail.ratingsCount', { count: Number(ratingsCount).toLocaleString(locale) })}</span>
             </div>
 
             <div className="manga-detail-meta">
-              <span>{statusLabels[manga.status] || manga.status || 'Sin estado'}</span>
-              <span>{manga.chapters ? `${manga.chapters} capítulos` : 'Capítulos no disponibles'}</span>
+              <span>{statusLabels[manga.status] || manga.status || t('mangaStatuses.unknown')}</span>
+              <span>{manga.chapters ? t('mangaDetail.chaptersCount', { count: manga.chapters }) : t('mangaDetail.chaptersUnavailable')}</span>
             </div>
 
             {manga.genres?.length ? (
@@ -319,7 +350,7 @@ function MangaDetailPage() {
                 onClick={handleFavorite}
                 disabled={isFavoriteLoading || isLibraryLoading}
               >
-                {isFavoriteLoading ? 'Actualizando...' : favoriteActive ? 'En favoritos' : 'Agregar a favoritos'}
+                {isFavoriteLoading ? t('common.updating') : favoriteActive ? t('mangaDetail.inFavorites') : t('mangaDetail.addToFavorites')}
               </button>
 
               <button
@@ -328,7 +359,7 @@ function MangaDetailPage() {
                 onClick={handleWatchlist}
                 disabled={isWatchlistLoading || isLibraryLoading}
               >
-                {isWatchlistLoading ? 'Actualizando...' : watchlistActive ? 'En pendientes' : 'Agregar a pendientes'}
+                {isWatchlistLoading ? t('common.updating') : watchlistActive ? t('mangaDetail.inWatchlist') : t('mangaDetail.addToWatchlist')}
               </button>
 
               <button
@@ -336,7 +367,15 @@ function MangaDetailPage() {
                 className="primary-action"
                 onClick={() => setIsReviewFormOpen((current) => !current)}
               >
-                {userReview ? 'Editar reseña' : 'Escribir reseña'}
+                {userReview ? t('mangaDetail.editReview') : t('mangaDetail.writeReview')}
+              </button>
+
+              <button
+                type="button"
+                className="filter-pill"
+                onClick={() => setIsListModalOpen(true)}
+              >
+                {t('mangaDetail.addToList')}
               </button>
             </div>
           </div>
@@ -345,7 +384,7 @@ function MangaDetailPage() {
         <section className="figma-section">
           <div className="section-title">
             <span>✎</span>
-            <h2>Sinopsis</h2>
+            <h2>{t('mangaDetail.synopsisTitle')}</h2>
           </div>
 
           <div className="manga-detail-synopsis">
@@ -356,7 +395,7 @@ function MangaDetailPage() {
                 className="manga-detail-link"
                 onClick={() => setIsSynopsisExpanded((current) => !current)}
               >
-                {isSynopsisExpanded ? 'Ver menos' : 'Ver más'}
+                {isSynopsisExpanded ? t('mangaDetail.viewLess') : t('mangaDetail.viewMore')}
               </button>
             ) : null}
           </div>
@@ -366,7 +405,7 @@ function MangaDetailPage() {
           <section className="figma-section">
             <div className="section-title">
               <span>★</span>
-              <h2>Tu reseña</h2>
+              <h2>{t('mangaDetail.yourReview')}</h2>
             </div>
 
             <ReviewCard
@@ -377,7 +416,7 @@ function MangaDetailPage() {
                   className="review-inline-action"
                   onClick={() => setIsReviewFormOpen(true)}
                 >
-                  Editar
+                  {t('common.edit')}
                 </button>
               )}
             />
@@ -388,42 +427,37 @@ function MangaDetailPage() {
           <section className="review-editor-panel">
             <div className="section-title">
               <span>★</span>
-              <h2>{userReview ? 'Editar reseña' : 'Escribir reseña'}</h2>
+              <h2>{userReview ? t('mangaDetail.editReview') : t('mangaDetail.writeReview')}</h2>
             </div>
 
             <form className="review-editor-form" onSubmit={handleReviewSubmit}>
               <div className="review-rating-field review-editor-form-wide">
-                <span>Rating</span>
-                <div className="review-rating-picker" aria-label="Seleccionar rating">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      className={star <= Number(reviewForm.rating) ? 'figma-star figma-star-active' : 'figma-star'}
-                      onClick={() => setReviewForm((current) => ({ ...current, rating: star }))}
-                      aria-label={`${star} estrellas`}
-                    >
-                      ★
-                    </button>
-                  ))}
-                </div>
+                <span>{t('mangaDetail.ratingLabel')}</span>
+                <StarRatingInput
+                  value={Number(reviewForm.rating) || 0}
+                  onChange={(nextRating) => setReviewForm((current) => ({ ...current, rating: nextRating }))}
+                  ariaLabel={t('mangaDetail.ratingAria')}
+                />
+                <small className="review-rating-note">
+                  {t('mangaDetail.ratingHelp')}
+                </small>
               </div>
 
               <label className="review-editor-form-wide">
-                <span>Contenido</span>
+                <span>{t('mangaDetail.contentLabel')}</span>
                 <textarea
                   name="content"
                   value={reviewForm.content}
                   onChange={(event) => setReviewForm((current) => ({ ...current, content: event.target.value }))}
                   rows="5"
                   maxLength="1000"
-                  placeholder="Escribí una reseña breve sobre este manga..."
+                  placeholder={t('mangaDetail.contentPlaceholder')}
                 />
               </label>
 
               <div className="review-editor-actions">
                 <button type="submit" className="primary-action" disabled={isSavingReview || !reviewForm.rating}>
-                  {isSavingReview ? 'Guardando...' : 'Guardar reseña'}
+                  {isSavingReview ? t('common.saving') : t('mangaDetail.submit')}
                 </button>
               </div>
             </form>
@@ -435,7 +469,7 @@ function MangaDetailPage() {
         <section className="figma-section">
           <div className="section-title">
             <span>✦</span>
-            <h2>Reseñas del manga</h2>
+            <h2>{t('mangaDetail.reviewsTitle')}</h2>
           </div>
 
           <div className="manga-detail-review-toolbar">
@@ -448,7 +482,7 @@ function MangaDetailPage() {
                   setReviewsPage(1)
                 }}
               >
-                Más recientes
+                {t('mangaDetail.sortRecent')}
               </button>
               <button
                 type="button"
@@ -458,10 +492,10 @@ function MangaDetailPage() {
                   setReviewsPage(1)
                 }}
               >
-                Mejor puntuadas
+                {t('mangaDetail.sortTop')}
               </button>
             </div>
-            {isReviewsLoading ? <span className="manga-detail-inline-copy">Actualizando reseñas...</span> : null}
+            {isReviewsLoading ? <span className="manga-detail-inline-copy">{t('mangaDetail.reviewsUpdating')}</span> : null}
           </div>
 
           {reviews.length ? (
@@ -480,10 +514,10 @@ function MangaDetailPage() {
                     onClick={() => setReviewsPage((current) => Math.max(current - 1, 1))}
                     disabled={reviewsPage <= 1 || isReviewsLoading}
                   >
-                    Anterior
+                    {t('common.previous')}
                   </button>
                   <span className="pagination-copy">
-                    Página {reviewsMeta.page} de {reviewsMeta.totalPages}
+                    {t('common.pageOf', { current: reviewsMeta.page, total: reviewsMeta.totalPages })}
                   </span>
                   <button
                     type="button"
@@ -491,7 +525,7 @@ function MangaDetailPage() {
                     onClick={() => setReviewsPage((current) => Math.min(current + 1, reviewsMeta.totalPages))}
                     disabled={reviewsPage >= reviewsMeta.totalPages || isReviewsLoading}
                   >
-                    Siguiente
+                    {t('common.next')}
                   </button>
                 </div>
               ) : null}
@@ -499,11 +533,18 @@ function MangaDetailPage() {
           ) : (
             <div className="empty-state">
               <span className="empty-state-icon">★</span>
-              <h2>Aún no hay reseñas públicas</h2>
-              <p>Podés ser la primera persona en dejar una opinión sobre este manga.</p>
+              <h2>{t('mangaDetail.reviewsEmptyTitle')}</h2>
+              <p>{t('mangaDetail.reviewsEmptyMessage')}</p>
             </div>
           )}
         </section>
+
+        <AddToListModal
+          isOpen={isListModalOpen}
+          manga={manga}
+          onClose={() => setIsListModalOpen(false)}
+          onAdded={handleListAdded}
+        />
       </div>
     </div>
   )
