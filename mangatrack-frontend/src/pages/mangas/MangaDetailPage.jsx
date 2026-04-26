@@ -53,6 +53,7 @@ function MangaDetailPage() {
   const [isListModalOpen, setIsListModalOpen] = useState(false)
   const loadedSlugRef = useRef('')
   const isReviewFormOpenRef = useRef(false)
+  const reviewEditorRef = useRef(null)
   const locale = language === 'en' ? 'en-US' : 'es-AR'
   const statusLabels = {
     ongoing: t('mangaStatuses.ongoing'),
@@ -64,6 +65,18 @@ function MangaDetailPage() {
   useEffect(() => {
     isReviewFormOpenRef.current = isReviewFormOpen
   }, [isReviewFormOpen])
+
+  const scrollToReviewEditor = () => {
+    reviewEditorRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
+  const handleOpenReviewForm = () => {
+    setIsReviewFormOpen(true)
+    window.requestAnimationFrame(scrollToReviewEditor)
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -325,7 +338,7 @@ function MangaDetailPage() {
             </div>
 
             <div className="manga-detail-rating">
-              <StarRatingDisplay value={averageRating} size="md" />
+              <StarRatingDisplay value={averageRating} size="md" className="manga-detail-rating-stars" />
               <strong>{averageRating ? averageRating.toFixed(1) : '0.0'}</strong>
               <span>{t('mangaDetail.ratingsCount', { count: Number(ratingsCount).toLocaleString(locale) })}</span>
             </div>
@@ -365,7 +378,7 @@ function MangaDetailPage() {
               <button
                 type="button"
                 className="primary-action"
-                onClick={() => setIsReviewFormOpen((current) => !current)}
+                onClick={handleOpenReviewForm}
               >
                 {userReview ? t('mangaDetail.editReview') : t('mangaDetail.writeReview')}
               </button>
@@ -414,7 +427,7 @@ function MangaDetailPage() {
                 <button
                   type="button"
                   className="review-inline-action"
-                  onClick={() => setIsReviewFormOpen(true)}
+                  onClick={handleOpenReviewForm}
                 >
                   {t('common.edit')}
                 </button>
@@ -424,7 +437,7 @@ function MangaDetailPage() {
         ) : null}
 
         {isReviewFormOpen ? (
-          <section className="review-editor-panel">
+          <section className="review-editor-panel" ref={reviewEditorRef}>
             <div className="section-title">
               <span>★</span>
               <h2>{userReview ? t('mangaDetail.editReview') : t('mangaDetail.writeReview')}</h2>

@@ -10,7 +10,7 @@ function AdminLayout() {
 
   return (
     <div className="admin-layout">
-      <aside className="admin-sidebar">
+      <header className="admin-sidebar">
         <div className="admin-sidebar-header">
           <h2>Panel Admin</h2>
           <Link to="/" className="admin-sidebar-back">
@@ -20,20 +20,25 @@ function AdminLayout() {
 
         <nav className="admin-sidebar-nav">
           {navItems.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`admin-sidebar-link ${
-                item.exact
-                  ? location.pathname === item.path
-                  : location.pathname.startsWith(item.path)
-              }`}
-            >
-              {item.label}
-            </Link>
+            (() => {
+              const isActive = item.exact
+                ? location.pathname === item.path
+                : location.pathname.startsWith(item.path)
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`admin-sidebar-link ${isActive ? 'active' : ''}`}
+                >
+                  {item.label}
+                </Link>
+              )
+            })()
           ))}
         </nav>
-      </aside>
+      </header>
 
       <main className="admin-main">
         <Outlet />
