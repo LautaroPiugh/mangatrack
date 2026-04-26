@@ -25,7 +25,9 @@ export const authService = {
 
   async register(registerPayload) {
     const data = await runRequest(async () => {
-      const response = await axiosClient.post('/auth/register', registerPayload)
+      const response = await axiosClient.post('/auth/register', registerPayload, {
+        timeout: 20000,
+      })
       return getPayloadData(response)
     }, 'No se pudo completar el registro.')
 
@@ -41,13 +43,19 @@ export const authService = {
   },
 
   async verifyAccount(token) {
-    const data = await runRequest(async () => {
-      const response = await axiosClient.get(`/auth/verify/${token}`)
-      return getPayloadData(response)
-    }, 'No se pudo verificar la cuenta.')
+    const response = await runRequest(async () => (
+      axiosClient.get('/auth/verify-email', {
+        params: {
+          token,
+        },
+      })
+    ), 'No se pudo verificar la cuenta.')
+
+    const data = getPayloadData(response)
 
     return {
       data,
+      message: response.data?.message,
       user: data?.user,
     }
   },

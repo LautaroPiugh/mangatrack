@@ -69,7 +69,9 @@ const seedAdmin = async () => {
       password: hashedPassword,
       role: 'admin',
       isVerified: true,
-      verificationToken: null,
+      emailVerificationToken: null,
+      emailVerificationExpires: null,
+      verifiedAt: new Date(),
     });
 
     console.log('Usuario existente promovido a admin.');
@@ -84,7 +86,9 @@ const seedAdmin = async () => {
     password: hashedPassword,
     role: 'admin',
     isVerified: true,
-    verificationToken: null,
+    emailVerificationToken: null,
+    emailVerificationExpires: null,
+    verifiedAt: new Date(),
   });
 
   console.log('Admin creado correctamente.');

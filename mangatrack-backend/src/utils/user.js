@@ -40,6 +40,8 @@ const sanitizeUser = (user) => {
     bio: normalizedUser.bio || null,
     email: normalizedUser.email,
     role: normalizedUser.role,
+    isVerified: Boolean(normalizedUser.isVerified),
+    verifiedAt: normalizedUser.verifiedAt || null,
     preferences: normalizedUser.preferences || {
       theme: 'dark',
       language: 'es',

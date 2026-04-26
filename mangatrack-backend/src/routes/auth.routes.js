@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, param } = require('express-validator');
+const { body, query } = require('express-validator');
 
 const authController = require('../controllers/auth.controller');
 const { authMiddleware } = require('../middleware/auth.middleware');
@@ -53,13 +53,13 @@ const loginValidations = [
 ];
 
 const verifyValidations = [
-  param('token')
+  query('token')
     .trim()
     .notEmpty().withMessage('El token de verificacion es obligatorio.'),
 ];
 
 router.post('/register', registerValidations, validateRequest, authController.register);
-router.get('/verify/:token', verifyValidations, validateRequest, authController.verifyAccount);
+router.get('/verify-email', verifyValidations, validateRequest, authController.verifyEmail);
 router.post('/login', loginValidations, validateRequest, authController.login);
 router.get('/me', authMiddleware, authController.getCurrentUser);
 

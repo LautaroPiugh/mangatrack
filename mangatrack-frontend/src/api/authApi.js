@@ -2,13 +2,19 @@ import apiClient, { getResponseData } from './axiosClient.js'
 
 const authApi = {
   register(payload) {
-    return apiClient.post('/auth/register', payload).then(getResponseData)
+    return apiClient.post('/auth/register', payload, {
+      timeout: 20000,
+    }).then(getResponseData)
   },
   login(payload) {
     return apiClient.post('/auth/login', payload).then(getResponseData)
   },
   verifyAccount(token) {
-    return apiClient.get(`/auth/verify/${token}`).then(getResponseData)
+    return apiClient.get('/auth/verify-email', {
+      params: {
+        token,
+      },
+    }).then(getResponseData)
   },
   getCurrentUser() {
     return apiClient.get('/auth/me').then(getResponseData)

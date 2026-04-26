@@ -49,12 +49,20 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    verificationToken: {
+    emailVerificationToken: {
       type: String,
       default: null,
       select: false,
       set: normalizeOptionalString,
       index: true,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+    verifiedAt: {
+      type: Date,
+      default: null,
     },
     role: {
       type: String,
@@ -127,7 +135,8 @@ const userSchema = new mongoose.Schema(
     toJSON: {
       transform(document, returnedObject) {
         delete returnedObject.password;
-        delete returnedObject.verificationToken;
+        delete returnedObject.emailVerificationToken;
+        delete returnedObject.emailVerificationExpires;
         return returnedObject;
       },
     },

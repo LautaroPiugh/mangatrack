@@ -75,9 +75,25 @@ FRONTEND_URL=http://localhost:5173
 MONGODB_URI=mongodb://127.0.0.1:27017/mangatrack
 JWT_SECRET=change_this_for_a_long_random_secret
 EMAIL_MODE=json
+EMAIL_FROM=MangaTrack <no-reply@mangatrack.local>
 ```
 
 `EMAIL_MODE=json` es util en desarrollo porque no envia correos reales y muestra el contenido en consola.
+
+Para SMTP real:
+
+```env
+EMAIL_MODE=smtp
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=tu_email@gmail.com
+EMAIL_PASS=tu_app_password
+EMAIL_FROM=MangaTrack <tu_email@gmail.com>
+FRONTEND_URL=http://localhost:5173
+```
+
+Si usas Gmail, debes generar un App Password. No uses tu contrasena normal y no commitees credenciales.
 
 Iniciar backend:
 
@@ -129,7 +145,7 @@ npm run dev
 ### Auth
 
 - `POST /api/auth/register`
-- `GET /api/auth/verify/:token`
+- `GET /api/auth/verify-email?token=...`
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 

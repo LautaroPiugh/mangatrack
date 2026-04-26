@@ -53,7 +53,7 @@ const buildSensitiveProjection = (options = {}) => {
   }
 
   if (options.includeVerificationToken) {
-    projection.push('+verificationToken');
+    projection.push('+emailVerificationToken');
   }
 
   return projection.join(' ');
@@ -148,7 +148,8 @@ const findByUsernameWithLibrary = (username, listName, options = {}) => {
 };
 
 const findByVerificationToken = (verificationToken, options = {}) => {
-  const query = User.findOne({ verificationToken });
+  const query = User.findOne({ emailVerificationToken: verificationToken });
+
   const sensitiveProjection = buildSensitiveProjection({
     includeVerificationToken: true,
     ...options,
@@ -197,7 +198,9 @@ const markAsVerified = (id) => User.findByIdAndUpdate(
   id,
   {
     isVerified: true,
-    verificationToken: null,
+    emailVerificationToken: null,
+    emailVerificationExpires: null,
+    verifiedAt: new Date(),
   },
   {
     new: true,

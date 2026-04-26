@@ -1,10 +1,12 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
 import authService from '../../services/authService.js'
 
 function VerifyAccountPage() {
-  const { token } = useParams()
+  const { token: routeToken } = useParams()
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token') || routeToken || ''
   const [status, setStatus] = useState('loading')
   const [message, setMessage] = useState('Estamos verificando tu cuenta...')
 
@@ -12,6 +14,12 @@ function VerifyAccountPage() {
     let isMounted = true
 
     const verifyAccount = async () => {
+      if (!token) {
+        setStatus('error')
+        setMessage('El link de verificacion es invalido o esta incompleto.')
+        return
+      }
+
       try {
         const response = await authService.verifyAccount(token)
 
