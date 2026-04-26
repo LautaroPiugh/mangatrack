@@ -70,6 +70,7 @@ const seedAdmin = async () => {
       role: 'admin',
       isVerified: true,
       emailVerificationToken: null,
+      emailVerificationTokenExpiresAt: null,
       emailVerificationExpires: null,
       verifiedAt: new Date(),
     });
@@ -87,6 +88,7 @@ const seedAdmin = async () => {
     role: 'admin',
     isVerified: true,
     emailVerificationToken: null,
+    emailVerificationTokenExpiresAt: null,
     emailVerificationExpires: null,
     verifiedAt: new Date(),
   });

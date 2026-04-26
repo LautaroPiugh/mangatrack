@@ -56,7 +56,30 @@ const userSchema = new mongoose.Schema(
       set: normalizeOptionalString,
       index: true,
     },
+    emailVerificationTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
     emailVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+    lastVerificationEmailSentAt: {
+      type: Date,
+      default: null,
+    },
+    passwordResetToken: {
+      type: String,
+      default: null,
+      select: false,
+      set: normalizeOptionalString,
+      index: true,
+    },
+    passwordResetTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    passwordResetRequestedAt: {
       type: Date,
       default: null,
     },
@@ -136,7 +159,10 @@ const userSchema = new mongoose.Schema(
       transform(document, returnedObject) {
         delete returnedObject.password;
         delete returnedObject.emailVerificationToken;
+        delete returnedObject.emailVerificationTokenExpiresAt;
         delete returnedObject.emailVerificationExpires;
+        delete returnedObject.passwordResetToken;
+        delete returnedObject.passwordResetTokenExpiresAt;
         return returnedObject;
       },
     },

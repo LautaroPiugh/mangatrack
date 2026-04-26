@@ -1,5 +1,8 @@
+const crypto = require('crypto');
 const User = require('../models/User');
 const { normalizeEmail, normalizeUsername } = require('../utils/user');
+
+const cryptoHash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const mangaCardProjection = 'title slug author artist genres coverUrl status averageRating ratingsCount';
@@ -54,6 +57,10 @@ const buildSensitiveProjection = (options = {}) => {
 
   if (options.includeVerificationToken) {
     projection.push('+emailVerificationToken');
+  }
+
+  if (options.includeResetToken) {
+    projection.push('+passwordResetToken');
   }
 
   return projection.join(' ');
@@ -148,7 +155,12 @@ const findByUsernameWithLibrary = (username, listName, options = {}) => {
 };
 
 const findByVerificationToken = (verificationToken, options = {}) => {
-  const query = User.findOne({ emailVerificationToken: verificationToken });
+  const query = User.findOne({
+    $or: [
+      { emailVerificationToken: verificationToken },
+      { emailVerificationToken: cryptoHash(verificationToken) },
+    ],
+  });
 
   const sensitiveProjection = buildSensitiveProjection({
     includeVerificationToken: true,
@@ -171,6 +183,20 @@ const existsByEmail = async (email) => Boolean(
 const existsByUsername = async (username) => Boolean(
   await User.exists({ username: normalizeUsername(username) }),
 );
+
+const findByPasswordResetToken = (passwordResetToken, options = {}) => {
+  const query = User.findOne({ passwordResetToken });
+  const sensitiveProjection = buildSensitiveProjection({
+    includeResetToken: true,
+    ...options,
+  });
+
+  if (sensitiveProjection) {
+    query.select(sensitiveProjection);
+  }
+
+  return query.exec();
+};
 
 const countDocuments = (filters = {}) => User.countDocuments(buildUserFilters(filters));
 
@@ -379,6 +405,7 @@ module.exports = {
   create,
   updateById,
   markAsVerified,
+  findByPasswordResetToken,
   deleteById,
   findByIdWithLibrary,
   findByIdWithSocial,

@@ -1697,6 +1697,10 @@ p {
   background: linear-gradient(135deg, var(--orange), var(--orange-2));
 }
 
+.auth-brand-blue > span {
+  background: linear-gradient(135deg, var(--blue), #1d4ed8);
+}
+
 .auth-brand strong {
   display: block;
   font-size: 1.35rem;
@@ -1757,6 +1761,17 @@ p {
   box-shadow: 0 18px 44px rgba(249, 115, 22, 0.22);
 }
 
+.auth-submit-blue {
+  background: linear-gradient(135deg, var(--blue), #1d4ed8);
+  box-shadow: 0 18px 44px rgba(37, 99, 235, 0.22);
+}
+
+.auth-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  transform: none;
+}
+
 .auth-switch-copy {
   margin-top: 24px;
   color: #6b7280;
@@ -1766,6 +1781,26 @@ p {
 
 .auth-switch-copy a {
   color: var(--green);
+}
+
+.auth-inline-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font: inherit;
+}
+
+.auth-inline-button:hover {
+  color: #60a5fa;
+}
+
+.auth-inline-button-orange {
+  color: var(--orange);
+}
+
+.auth-inline-button-orange:hover {
+  color: #fb923c;
 }
 
 .auth-feedback {
@@ -1818,6 +1853,113 @@ p {
 
 .auth-visual-register {
   background: linear-gradient(135deg, rgba(124, 45, 18, 0.22), var(--panel), rgba(20, 83, 45, 0.22));
+}
+
+.auth-visual-utility {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 36%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.9));
+}
+
+.auth-visual-utility-password {
+  background:
+    radial-gradient(circle at 18% 20%, rgba(96, 165, 250, 0.2), transparent 28%),
+    radial-gradient(circle at 82% 24%, rgba(59, 130, 246, 0.12), transparent 24%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.9));
+}
+
+.auth-visual-utility-verification {
+  background:
+    radial-gradient(circle at 18% 20%, rgba(251, 146, 60, 0.22), transparent 28%),
+    radial-gradient(circle at 82% 24%, rgba(249, 115, 22, 0.12), transparent 24%),
+    linear-gradient(145deg, rgba(24, 24, 27, 0.96), rgba(39, 17, 10, 0.9));
+}
+
+.auth-utility-stack {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(560px, 100%);
+  gap: 24px;
+}
+
+.auth-utility-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #dbeafe;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.auth-visual-utility-verification .auth-utility-badge {
+  color: #ffedd5;
+}
+
+.auth-utility-icon-shell {
+  position: relative;
+  width: min(360px, 100%);
+  margin: 0 auto;
+}
+
+.auth-utility-glow {
+  position: absolute;
+  inset: 12% 10%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.22), transparent 70%);
+  filter: blur(28px);
+}
+
+.auth-visual-utility-verification .auth-utility-glow {
+  background: radial-gradient(circle, rgba(251, 146, 60, 0.22), transparent 70%);
+}
+
+.auth-utility-icon-svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 28px 56px rgba(15, 23, 42, 0.32));
+}
+
+.auth-utility-caption {
+  position: static;
+  inset: auto;
+  padding: 0;
+  background: transparent;
+}
+
+.auth-utility-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.auth-utility-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(14px);
+}
+
+.auth-utility-card strong {
+  font-size: 0.98rem;
+}
+
+.auth-utility-card span {
+  color: #cbd5e1;
+  font-size: 0.92rem;
+  line-height: 1.55;
 }
 
 .poster-cloud {
@@ -2111,6 +2253,10 @@ p {
   .auth-screen-register .auth-visual-side {
     order: 2;
   }
+
+  .auth-utility-stack {
+    width: min(520px, 100%);
+  }
 }
 
 @media (max-width: 640px) {
@@ -2189,6 +2335,10 @@ p {
 
   .poster-cloud {
     gap: 14px;
+  }
+
+  .auth-utility-card-grid {
+    grid-template-columns: 1fr;
   }
 
   .pagination-row {

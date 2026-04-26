@@ -52,6 +52,36 @@ const loginValidations = [
     .notEmpty().withMessage('La contrasena es obligatoria.'),
 ];
 
+const resendVerificationValidations = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('El email es obligatorio.')
+    .bail()
+    .isEmail().withMessage('El email no es valido.')
+    .bail()
+    .normalizeEmail(),
+];
+
+const forgotPasswordValidations = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('El email es obligatorio.')
+    .bail()
+    .isEmail().withMessage('El email no es valido.')
+    .bail()
+    .normalizeEmail(),
+];
+
+const resetPasswordValidations = [
+  body('token')
+    .trim()
+    .notEmpty().withMessage('El token es obligatorio.'),
+  body('password')
+    .notEmpty().withMessage('La contrasena es obligatoria.')
+    .bail()
+    .matches(STRONG_PASSWORD_REGEX).withMessage(PASSWORD_STRENGTH_MESSAGE),
+];
+
 const verifyValidations = [
   query('token')
     .trim()
@@ -60,6 +90,9 @@ const verifyValidations = [
 
 router.post('/register', registerValidations, validateRequest, authController.register);
 router.get('/verify-email', verifyValidations, validateRequest, authController.verifyEmail);
+router.post('/resend-verification', resendVerificationValidations, validateRequest, authController.resendVerification);
+router.post('/forgot-password', forgotPasswordValidations, validateRequest, authController.forgotPassword);
+router.post('/reset-password', resetPasswordValidations, validateRequest, authController.resetPassword);
 router.post('/login', loginValidations, validateRequest, authController.login);
 router.get('/me', authMiddleware, authController.getCurrentUser);
 

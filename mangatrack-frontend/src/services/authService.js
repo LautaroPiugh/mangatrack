@@ -60,6 +60,39 @@ export const authService = {
     }
   },
 
+  async resendVerification(payload) {
+    const response = await runRequest(async () => (
+      axiosClient.post('/auth/resend-verification', payload)
+    ), 'No se pudo reenviar el correo de verificación.')
+
+    return {
+      data: getPayloadData(response),
+      message: response.data?.message,
+    }
+  },
+
+  async forgotPassword(payload) {
+    const response = await runRequest(async () => (
+      axiosClient.post('/auth/forgot-password', payload)
+    ), 'No se pudo enviar el correo de recuperación.')
+
+    return {
+      data: getPayloadData(response),
+      message: response.data?.message,
+    }
+  },
+
+  async resetPassword(payload) {
+    const response = await runRequest(async () => (
+      axiosClient.post('/auth/reset-password', payload)
+    ), 'No se pudo restablecer la contraseña.')
+
+    return {
+      data: getPayloadData(response),
+      message: response.data?.message,
+    }
+  },
+
   async getMe() {
     const data = await runRequest(async () => {
       const response = await axiosClient.get('/auth/me')

@@ -92,7 +92,14 @@ function LoginPage() {
           {error ? <p className="auth-feedback auth-feedback-error">{error}</p> : null}
 
           <p className="auth-switch-copy">
+            <Link to="/forgot-password">¿Olvidaste tu contraseña?</Link>
+          </p>
+
+          <p className="auth-switch-copy">
             ¿No tenés cuenta? <Link to="/register">Crear una cuenta</Link>
+          </p>
+          <p className="auth-switch-copy">
+            <Link to="/resend-verification">Reenviar correo de verificación</Link>
           </p>
         </div>
       </div>

@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const { createVerificationEmailTemplate } = require('../emails/templates/verificationEmail');
+const { createPasswordResetEmailTemplate } = require('../emails/templates/passwordResetEmail');
 
 const EMAIL_MODE_JSON = 'json';
 const EMAIL_MODE_SMTP = 'smtp';
@@ -223,12 +225,12 @@ const sendEmail = async ({ to, subject, html, text }) => {
     logSmtpError(error);
 
     throw createEmailError(
-      'No se pudo enviar el email de verificacion. Revisa la configuracion SMTP e intenta nuevamente.',
+      'No se pudo enviar el email. Revisa la configuracion SMTP e intenta nuevamente.',
       {
         name: 'EmailDeliveryError',
         publicMessage: error.code === 'EAUTH'
           ? 'No se pudo autenticar con el servidor SMTP. Revisa EMAIL_USER y EMAIL_PASS.'
-          : 'No se pudo enviar el email de verificacion. Revisa la configuracion SMTP e intenta nuevamente.',
+          : 'No se pudo enviar el email. Revisa la configuracion SMTP e intenta nuevamente.',
         code: error.code,
         cause: error,
       },
@@ -238,32 +240,33 @@ const sendEmail = async ({ to, subject, html, text }) => {
 
 const sendVerificationEmail = async ({ to, name, token }) => {
   const verificationUrl = `${getFrontendUrl()}/verify-email?token=${encodeURIComponent(token)}`;
-  const greeting = name?.trim() ? `Hola ${name},` : 'Hola,';
+  const template = createVerificationEmailTemplate({
+    appName: getAppName(),
+    name,
+    verificationUrl,
+  });
 
   return sendEmail({
     to,
-    subject: `Verifica tu cuenta de ${getAppName()}`,
-    text: [
-      greeting,
-      '',
-      `Gracias por registrarte en ${getAppName()}.`,
-      `Verifica tu cuenta entrando a este link: ${verificationUrl}`,
-      '',
-      'Si no solicitaste este registro, puedes ignorar este correo.',
-    ].join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.6;">
-        <h2 style="margin-bottom: 12px;">${getAppName()}</h2>
-        <p>${greeting}</p>
-        <p>Gracias por registrarte. Para activar tu cuenta, haz clic en el siguiente enlace:</p>
-        <p>
-          <a href="${verificationUrl}" style="color: #2563eb; text-decoration: none;">
-            Verificar cuenta
-          </a>
-        </p>
-        <p>Si no solicitaste este registro, puedes ignorar este correo.</p>
-      </div>
-    `,
+    subject: template.subject,
+    text: template.text,
+    html: template.html,
+  });
+};
+
+const sendPasswordResetEmail = async ({ to, name, token }) => {
+  const resetUrl = `${getFrontendUrl()}/reset-password?token=${encodeURIComponent(token)}`;
+  const template = createPasswordResetEmailTemplate({
+    appName: getAppName(),
+    name,
+    resetUrl,
+  });
+
+  return sendEmail({
+    to,
+    subject: template.subject,
+    text: template.text,
+    html: template.html,
   });
 };
 
@@ -272,4 +275,5 @@ module.exports = {
   getEmailMode,
   sendEmail,
   sendVerificationEmail,
+  sendPasswordResetEmail,
 };

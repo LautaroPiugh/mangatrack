@@ -16,6 +16,15 @@ const authApi = {
       },
     }).then(getResponseData)
   },
+  resendVerification(payload) {
+    return apiClient.post('/auth/resend-verification', payload).then(getResponseData)
+  },
+  forgotPassword(payload) {
+    return apiClient.post('/auth/forgot-password', payload).then(getResponseData)
+  },
+  resetPassword(payload) {
+    return apiClient.post('/auth/reset-password', payload).then(getResponseData)
+  },
   getCurrentUser() {
     return apiClient.get('/auth/me').then(getResponseData)
   },

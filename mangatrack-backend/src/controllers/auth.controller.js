@@ -39,6 +39,51 @@ const verifyEmail = async (req, res, next) => {
   }
 };
 
+const resendVerification = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const result = await authService.resendVerificationEmail({ email });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {},
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const result = await authService.forgotPassword({ email });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {},
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+    const result = await authService.resetPassword({ token, password });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {},
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const login = async (req, res, next) => {
   try {
     const result = await authService.login(req.body);
@@ -72,6 +117,9 @@ const getCurrentUser = async (req, res, next) => {
 module.exports = {
   register,
   verifyEmail,
+  resendVerification,
+  forgotPassword,
+  resetPassword,
   login,
   getCurrentUser,
 };

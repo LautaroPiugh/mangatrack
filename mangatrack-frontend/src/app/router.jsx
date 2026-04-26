@@ -10,6 +10,9 @@ import FeedPage from '../pages/FeedPage.jsx'
 import LoginPage from '../pages/auth/LoginPage.jsx'
 import RegisterPage from '../pages/auth/RegisterPage.jsx'
 import VerifyAccountPage from '../pages/auth/VerifyAccountPage.jsx'
+import ResendVerificationPage from '../pages/auth/ResendVerificationPage.jsx'
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage.jsx'
+import ResetPasswordPage from '../pages/auth/ResetPasswordPage.jsx'
 import MangasPage from '../pages/mangas/MangasPage.jsx'
 import MangaDetailPage from '../pages/mangas/MangaDetailPage.jsx'
 import ReviewsPage from '../pages/reviews/ReviewsPage.jsx'
@@ -35,6 +38,18 @@ const router = createBrowserRouter([
       {
         path: '/register',
         element: <RegisterPage />,
+      },
+      {
+        path: '/resend-verification',
+        element: <ResendVerificationPage />,
+      },
+      {
+        path: '/forgot-password',
+        element: <ForgotPasswordPage />,
+      },
+      {
+        path: '/reset-password',
+        element: <ResetPasswordPage />,
       },
     ],
   },
