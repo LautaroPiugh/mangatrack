@@ -905,12 +905,26 @@ p {
   gap: 10px;
 }
 
+.manga-detail-rating-stars {
+  --star-size: 1.45rem;
+}
+
+.manga-detail-rating-stars .star-rating-glyph-base {
+  color: #6b7280;
+  opacity: 0.22;
+}
+
+.manga-detail-rating-stars .star-rating-glyph-fill {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.22));
+}
+
 .manga-detail-rating strong {
   font-size: 1.15rem;
 }
 
 .manga-detail-rating span:last-child {
-  color: var(--muted);
+  color: #fbbf24;
 }
 
 .manga-detail-meta {
@@ -2361,19 +2375,20 @@ p {
 }
 
 .admin-sidebar {
-  position: fixed;
-  left: 0;
+  position: sticky;
   top: var(--header);
-  width: var(--sidebar);
-  height: calc(100vh - var(--header));
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
   background: var(--panel);
-  border-right: 1px solid var(--line);
-  padding: 24px;
-  overflow-y: auto;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 24px;
 }
 
 .admin-main {
-  margin-left: var(--sidebar);
   padding: 24px;
   min-height: calc(100vh - var(--header));
 }
@@ -2412,9 +2427,17 @@ p {
 /* Admin Create Page */
 .admin-create-layout {
   display: grid;
-  grid-template-columns: 400px 1fr;
+  grid-template-columns: 1fr;
   gap: 32px;
   align-items: start;
+  width: 100%;
+}
+
+.admin-create-import-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  width: 100%;
 }
 
 .admin-create-sidebar {
@@ -2424,6 +2447,7 @@ p {
 
 .admin-create-main {
   min-width: 0;
+  width: 100%;
 }
 
 /* External Manga Search */
@@ -2780,7 +2804,7 @@ p {
 
 .admin-mangas-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -2999,6 +3023,10 @@ p {
 
 /* Responsive */
 @media (max-width: 1024px) {
+  .admin-mangas-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .admin-create-layout {
     grid-template-columns: 1fr;
     gap: 24px;
@@ -3008,6 +3036,14 @@ p {
     position: static;
   }
 
+  .admin-create-import-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .external-browser-grid {
+    grid-template-columns: 1fr;
+  }
+
   .form-row {
     grid-template-columns: 1fr;
   }
@@ -3015,17 +3051,14 @@ p {
 
 @media (max-width: 768px) {
   .admin-sidebar {
-    position: static;
-    width: 100%;
-    height: auto;
-    top: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--line);
-    padding: 20px;
+    position: sticky;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
   }
 
   .admin-main {
-    margin-left: 0;
     padding: 16px;
   }
 
@@ -3048,7 +3081,7 @@ p {
   }
 
   .admin-mangas-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
   }
 
@@ -3070,25 +3103,37 @@ p {
   }
 }
 
+@media (max-width: 560px) {
+  .admin-mangas-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Admin Layout */
 .admin-sidebar-header {
-  margin-bottom: 32px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  min-width: 0;
 }
 
 .admin-sidebar-header h2 {
-  font-size: 1.5rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  margin: 0 0 16px 0;
+  margin: 0;
   color: var(--text);
+  white-space: nowrap;
 }
 
 .admin-sidebar-back {
   display: inline-block;
   color: var(--blue);
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
   transition: color var(--ease);
+  white-space: nowrap;
 }
 
 .admin-sidebar-back:hover {
@@ -3097,13 +3142,15 @@ p {
 
 .admin-sidebar-nav {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .admin-sidebar-link {
   display: block;
-  padding: 12px 16px;
+  padding: 9px 14px;
   color: var(--muted);
   text-decoration: none;
   border-radius: var(--radius-md);
@@ -3132,10 +3179,79 @@ p {
   margin-bottom: 32px;
 }
 
+.admin-create-mode-switch-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
 .admin-create-mode-switch {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.admin-create-help-btn {
+  width: 52px;
+  height: 52px;
+  align-self: start;
+  justify-self: start;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: var(--panel);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--ease), border-color var(--ease), box-shadow var(--ease);
+}
+
+.admin-create-help-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(59, 130, 246, 0.45);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.admin-create-help-panel {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
+}
+
+.admin-create-import-summary {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.admin-create-import-note {
+  padding: 18px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-elevated) 90%, transparent);
+  color: var(--text);
+  border: 1px solid var(--line);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.admin-create-import-note span {
+  display: block;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .admin-create-mode-btn {
@@ -3320,7 +3436,7 @@ p {
 
 .external-browser-filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
 }
 
@@ -3435,7 +3551,7 @@ p {
 
 .external-browser-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 18px;
 }
 
@@ -3949,7 +4065,7 @@ p {
   gap: 20px;
 }
 
-@media (min-width: 1440px) {
+@media (min-width: 1200px) {
   .external-browser-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

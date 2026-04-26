@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 import useFeedback from '../../hooks/useFeedback.js'
 import useI18n from '../../hooks/useI18n.js'
@@ -118,7 +117,6 @@ function ExternalResultCard({ manga, onOpenDetail, onOpenImport, onPrefill, t, l
 }
 
 function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
-  const navigate = useNavigate()
   const { notify } = useFeedback()
   const { language, t } = useI18n()
   const locale = language === 'en' ? 'en-US' : 'es-AR'
@@ -423,7 +421,17 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
       })
 
       setImportCandidate(null)
-      navigate(`/admin/mangas/${result.manga._id}/edit`)
+      if (activePreset) {
+        void runPreset(activePreset, {
+          page: pagination?.currentPage || 1,
+          limit: pageSize,
+        })
+        return
+      }
+
+      if (currentRequest.mode === 'search' && currentRequest.params) {
+        void runSearch(filters, pagination?.currentPage || 1, pageSize)
+      }
     } catch (importError) {
       notify({
         variant: 'error',
@@ -456,6 +464,8 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
     if (nextPage < 1 || nextPage === pagination?.currentPage) {
       return
     }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' })
 
     if (activePreset) {
       void runPreset(activePreset, { page: nextPage, limit: pageSize })
@@ -819,7 +829,7 @@ function ExternalMangaSearch({ onUseData, onSwitchToManual }) {
                 onClick={handleImportNow}
                 disabled={isImporting}
               >
-                {isImporting ? t('admin.importing') : t('admin.importAndOpen')}
+                {isImporting ? t('admin.importing') : t('admin.import')}
               </button>
             </div>
           </div>
