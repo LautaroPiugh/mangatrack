@@ -11,9 +11,16 @@ export const getCollectionPayload = (response) => ({
   meta: response.data?.meta || null,
 })
 
-export const normalizeRequestError = (error, fallbackMessage) => (
-  new Error(getApiErrorMessage(error, fallbackMessage))
-)
+export const normalizeRequestError = (error, fallbackMessage) => {
+  const normalizedError = new Error(getApiErrorMessage(error, fallbackMessage))
+  normalizedError.code = error.response?.data?.code || null
+  normalizedError.status = error.response?.status || null
+  normalizedError.details = Array.isArray(error.response?.data?.details)
+    ? error.response.data.details
+    : []
+
+  return normalizedError
+}
 
 export const runRequest = async (requestFactory, fallbackMessage) => {
   try {

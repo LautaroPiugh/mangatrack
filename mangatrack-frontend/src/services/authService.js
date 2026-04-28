@@ -28,17 +28,21 @@ export const authService = {
       const response = await axiosClient.post('/auth/register', registerPayload, {
         timeout: 20000,
       })
-      return getPayloadData(response)
+      return {
+        payload: getPayloadData(response),
+        message: response.data?.message,
+      }
     }, 'No se pudo completar el registro.')
 
-    if (data?.token && data?.user) {
-      setStoredSession({ token: data.token, user: data.user })
+    if (data?.payload?.token && data?.payload?.user) {
+      setStoredSession({ token: data.payload.token, user: data.payload.user })
     }
 
     return {
-      data,
-      token: data?.token,
-      user: data?.user,
+      data: data?.payload,
+      message: data?.message,
+      token: data?.payload?.token,
+      user: data?.payload?.user,
     }
   },
 

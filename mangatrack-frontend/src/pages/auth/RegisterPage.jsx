@@ -4,6 +4,9 @@ import { useState } from 'react'
 import ImageWithFallback from '../../components/common/ImageWithFallback.jsx'
 import useAuth from '../../hooks/useAuth.js'
 
+const PASSWORD_REQUIREMENTS = 'Usá entre 8 y 72 caracteres, con al menos una mayúscula, un número y un símbolo.'
+const USERNAME_HINT = 'Entre 3 y 30 caracteres. Solo letras, números, puntos, guiones y guion bajo.'
+
 const mangaPosters = [
   'https://images.unsplash.com/photo-1666153184621-bc6445e3568d?w=500',
   'https://images.unsplash.com/photo-1767700629009-c5b5dc7b5947?w=500',
@@ -22,20 +25,56 @@ function RegisterPage() {
     confirmPassword: '',
   })
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [success, setSuccess] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const buildFieldErrors = (details = []) => details.reduce((accumulator, detail) => {
+    if (detail?.field && detail?.message && !accumulator[detail.field]) {
+      accumulator[detail.field] = detail.message
+    }
+
+    return accumulator
+  }, {})
+
+  const isStrongPassword = (value) => /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,72}$/.test(value)
+
   const handleChange = (event) => {
     const { name, value } = event.target
+    setFieldErrors((current) => {
+      if (!current[name] && !(name === 'password' && current.confirmPassword)) {
+        return current
+      }
+
+      const nextErrors = { ...current }
+      delete nextErrors[name]
+
+      if (name === 'password') {
+        delete nextErrors.confirmPassword
+      }
+
+      return nextErrors
+    })
     setForm((current) => ({ ...current, [name]: value }))
   }
 
   const handleRegister = async (event) => {
     event.preventDefault()
     setError('')
+    setFieldErrors({})
     setSuccess('')
 
+    if (!isStrongPassword(form.password)) {
+      setFieldErrors({ password: PASSWORD_REQUIREMENTS })
+      setError('Revisá los campos marcados.')
+      return
+    }
+
     if (form.password !== form.confirmPassword) {
+      setFieldErrors({
+        password: 'Las contraseñas no coinciden.',
+        confirmPassword: 'Las contraseñas no coinciden.',
+      })
       setError('Las contraseñas no coinciden.')
       return
     }
@@ -58,7 +97,30 @@ function RegisterPage() {
       setSuccess(response.message || 'Revisá tu correo para verificar la cuenta.')
       window.setTimeout(() => navigate('/login'), 1800)
     } catch (registerError) {
-      setError(registerError.message || 'No se pudo crear la cuenta. Intentá nuevamente.')
+      const nextFieldErrors = buildFieldErrors(registerError.details)
+      const message = registerError.message || 'No se pudo crear la cuenta. Intentá nuevamente.'
+
+      if (message.toLowerCase().includes('username') && !nextFieldErrors.username) {
+        nextFieldErrors.username = message
+      }
+
+      if (message.toLowerCase().includes('email') && !nextFieldErrors.email) {
+        nextFieldErrors.email = message
+      }
+
+      if (message.toLowerCase().includes('contrasena') && !nextFieldErrors.password) {
+        nextFieldErrors.password = message
+      }
+
+      if (Object.keys(nextFieldErrors).length > 0) {
+        setFieldErrors(nextFieldErrors)
+      }
+
+      setError(
+        Object.keys(nextFieldErrors).length > 0
+          ? 'Revisá los campos marcados.'
+          : message
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -110,6 +172,7 @@ function RegisterPage() {
                   autoComplete="name"
                 />
               </div>
+              {fieldErrors.name ? <p className="auth-field-error">{fieldErrors.name}</p> : null}
             </label>
 
             <label>
@@ -125,6 +188,8 @@ function RegisterPage() {
                   autoComplete="username"
                 />
               </div>
+              <p className="auth-field-hint">{USERNAME_HINT}</p>
+              {fieldErrors.username ? <p className="auth-field-error">{fieldErrors.username}</p> : null}
             </label>
 
             <label>
@@ -141,6 +206,7 @@ function RegisterPage() {
                   autoComplete="email"
                 />
               </div>
+              {fieldErrors.email ? <p className="auth-field-error">{fieldErrors.email}</p> : null}
             </label>
 
             <label>
@@ -157,6 +223,8 @@ function RegisterPage() {
                   autoComplete="new-password"
                 />
               </div>
+              <p className="auth-field-hint">{PASSWORD_REQUIREMENTS}</p>
+              {fieldErrors.password ? <p className="auth-field-error">{fieldErrors.password}</p> : null}
             </label>
 
             <label>
@@ -173,9 +241,10 @@ function RegisterPage() {
                   autoComplete="new-password"
                 />
               </div>
+              {fieldErrors.confirmPassword ? <p className="auth-field-error">{fieldErrors.confirmPassword}</p> : null}
             </label>
 
-            <button type="submit" className="auth-submit auth-submit-orange">
+            <button type="submit" className="auth-submit auth-submit-orange" disabled={isSubmitting}>
               {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
               <span>→</span>
             </button>
