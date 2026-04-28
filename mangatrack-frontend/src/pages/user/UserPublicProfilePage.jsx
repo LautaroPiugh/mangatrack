@@ -91,8 +91,8 @@ function UserPublicProfilePage() {
 
     try {
       const result = profile.isFollowing
-        ? await profileService.unfollowUser(profile.username)
-        : await profileService.followUser(profile.username)
+        ? await profileService.unfollowUser(profile.id)
+        : await profileService.followUser(profile.id)
 
       setProfile((current) => (
         current

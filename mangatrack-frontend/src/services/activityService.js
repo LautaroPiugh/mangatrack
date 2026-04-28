@@ -7,7 +7,15 @@ const activityService = {
       const response = await axiosClient.get('/activity/feed', {
         params: buildParams(params),
       })
-      return getCollectionPayload(response)
+      const payload = getCollectionPayload(response)
+
+      return {
+        ...payload,
+        meta: {
+          ...(payload.meta || {}),
+          followingCount: response.data?.meta?.followingCount || 0,
+        },
+      }
     }, 'No se pudo cargar el feed público.')
   },
 

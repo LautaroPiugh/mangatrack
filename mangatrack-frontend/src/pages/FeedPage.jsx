@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 
 import ActivityFeedList from '../components/activity/ActivityFeedList.jsx'
+import useAuth from '../hooks/useAuth.js'
 import useI18n from '../hooks/useI18n.js'
 import activityService from '../services/activityService.js'
 
 function FeedPage() {
   const { t } = useI18n()
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [activities, setActivities] = useState([])
   const [meta, setMeta] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -15,6 +17,18 @@ function FeedPage() {
     let isMounted = true
 
     const loadFeed = async () => {
+      if (isAuthLoading) {
+        return
+      }
+
+      if (!isAuthenticated) {
+        setActivities([])
+        setMeta(null)
+        setError('')
+        setIsLoading(false)
+        return
+      }
+
       setIsLoading(true)
       setError('')
 
@@ -45,7 +59,9 @@ function FeedPage() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [isAuthenticated, isAuthLoading])
+
+  const isFollowingEmpty = Boolean(isAuthenticated && !isLoading && !error && meta?.followingCount === 0)
 
   return (
     <div className="figma-page">
@@ -58,7 +74,15 @@ function FeedPage() {
       </section>
 
       <div className="figma-content">
-        {isLoading ? (
+        {!isAuthLoading && !isAuthenticated ? (
+          <div className="empty-state">
+            <span className="empty-state-icon">↻</span>
+            <h2>{t('feed.authRequiredTitle')}</h2>
+            <p>{t('feed.authRequiredMessage')}</p>
+          </div>
+        ) : null}
+
+        {isLoading || isAuthLoading ? (
           <div className="empty-state">
             <span className="empty-state-icon">⌛</span>
             <h2>{t('feed.loadingTitle')}</h2>
@@ -74,12 +98,12 @@ function FeedPage() {
           </div>
         ) : null}
 
-        {!isLoading && !error ? (
+        {!isLoading && !error && isAuthenticated ? (
           <ActivityFeedList
-            title={t('feed.globalTimeline')}
+            title={t('feed.followingTimeline')}
             activities={activities}
-            emptyTitle={t('feed.emptyTitle')}
-            emptyMessage={t('feed.emptyMessage')}
+            emptyTitle={isFollowingEmpty ? t('feed.emptyFollowingTitle') : t('feed.emptyTitle')}
+            emptyMessage={isFollowingEmpty ? t('feed.emptyNoFollowingMessage') : t('feed.emptyMessage')}
           />
         ) : null}
       </div>

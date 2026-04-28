@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 
 import ConfirmDialog from '../common/ConfirmDialog.jsx'
 import UserAvatar from '../user/UserAvatar.jsx'
+import SearchBar from './SearchBar.jsx'
 import useFeedback from '../../hooks/useFeedback.js'
 import useI18n from '../../hooks/useI18n.js'
 
@@ -147,40 +148,13 @@ function UserMenu({ user, isAuthenticated = false, onLogout }) {
 }
 
 function Header({ user, isAuthenticated = false, onLogout }) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const navigate = useNavigate()
   const location = useLocation()
-  const { t } = useI18n()
-
-  const handleSearch = (event) => {
-    event.preventDefault()
-    const normalizedQuery = searchQuery.trim()
-    const searchParams = new URLSearchParams()
-
-    if (normalizedQuery) {
-      searchParams.set('q', normalizedQuery)
-    }
-
-    navigate({
-      pathname: '/mangas',
-      search: searchParams.toString() ? `?${searchParams.toString()}` : '',
-    })
-  }
 
   return (
     <header className="topbar">
       <div className="topbar-inner">
         <div className="topbar-search-slot">
-          <form className="global-search" onSubmit={handleSearch}>
-            <span className="search-icon" aria-hidden="true">⌕</span>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={t('header.searchPlaceholder')}
-              aria-label={t('header.searchLabel')}
-            />
-          </form>
+          <SearchBar />
         </div>
 
         <div className="topbar-actions">

@@ -1,63 +1,97 @@
-# MangaTrack
+# 📚 MangaTrack
 
-MangaTrack es una aplicación web full-stack para gestionar mangas, reseñas, favoritos, watchlist y listas personales. Fue desarrollada como trabajo integrador final usando React + Vite en frontend, Node.js + Express en backend y MongoDB como base de datos.
+MangaTrack es una aplicación web full-stack orientada a la gestión y descubrimiento de mangas, con funcionalidades sociales como seguimiento de usuarios y feed personalizado.
 
-## URLs públicas
+Fue desarrollada como trabajo integrador utilizando React + Vite en el frontend, Node.js + Express en el backend y MongoDB como base de datos.
 
-- Frontend: PENDIENTE
-- Backend API: PENDIENTE
+---
 
-## Repositorios
+## 🌐 URLs públicas
 
-- Backend: PENDIENTE
-- Frontend: PENDIENTE
+- Frontend: https://mangatrack-rouge.vercel.app/
+- Backend API: https://mangatrack-backend.onrender.com
 
-## Credenciales de prueba
+---
+
+## 🧪 Credenciales de prueba
 
 ### Usuario común verificado
-
-- Email: user@mangatrack.com
-- Password: User123456
+- Usuario: lautapiugh  
+- Password: Admin123!  
 
 ### Usuario administrador
+- Usuario: admin
+- Password: Admin123!  
 
-- Email: admin@mangatrack.com
-- Password: Admin123456
+---
 
-## Funcionalidades principales
+## 🚀 Funcionalidades principales
 
-- Registro de usuarios.
-- Verificación de cuenta por correo electrónico.
-- Reenvío de correo de verificación.
-- Login con JWT.
-- Recuperación de contraseña por email.
-- CRUD de mangas.
-- Panel admin para crear, editar, eliminar e importar mangas.
-- Integración con Jikan API para buscar e importar mangas.
-- Reviews con rating.
-- Favoritos.
-- Watchlist.
-- Listas personales.
-- Feed de actividad.
-- Perfil de usuario.
-- Tema claro/oscuro.
-- Idioma español/inglés.
-- Rutas protegidas por JWT.
-- Roles de usuario y administrador.
-- UI responsive.
+### 🔐 Autenticación y usuarios
+- Registro de usuarios
+- Verificación de cuenta por email
+- Reenvío de verificación
+- Login con JWT
+- Recuperación de contraseña por email
+- Roles (usuario / administrador)
+- Rutas protegidas
 
-## Stack técnico
+---
+
+### 📖 Mangas
+- CRUD completo de mangas (admin)
+- Importación desde Jikan API
+- Listado y detalle de mangas
+
+---
+
+### ⭐ Interacciones
+- Reviews con puntuación
+- Favoritos
+- Watchlist
+- Listas personales
+
+---
+
+### 👥 Funcionalidad social
+- Seguir / dejar de seguir usuarios
+- Perfil público de usuario
+- Contadores de seguidores y seguidos
+
+---
+
+### 📰 Feed personalizado
+- Actividad de usuarios seguidos:
+  - Reviews creadas
+  - Mangas agregados a favoritos
+  - Mangas agregados a watchlist
+- Feed filtrado exclusivamente por usuarios seguidos
+
+---
+
+### 🔎 Búsqueda global
+- Buscador unificado
+- Búsqueda de usuarios y mangas
+- Resultados agrupados
+
+---
+
+### 🎨 UI / UX
+- Interfaz responsive (320px – 2000px)
+- Tema claro / oscuro
+- Idioma español / inglés
+
+---
+
+## 🧠 Stack técnico
 
 ### Frontend
-
 - React
 - Vite
 - React Router
 - Axios
-- CSS responsive
 
 ### Backend
-
 - Node.js
 - Express
 - MongoDB
@@ -65,14 +99,10 @@ MangaTrack es una aplicación web full-stack para gestionar mangas, reseñas, fa
 - JWT
 - bcrypt
 - Nodemailer
-- express-validator
-- dotenv
-- CORS
-- Morgan
 
-## Arquitectura backend
+---
 
-El backend respeta una arquitectura por capas:
+## 🧱 Arquitectura backend
 
 ```text
 src/

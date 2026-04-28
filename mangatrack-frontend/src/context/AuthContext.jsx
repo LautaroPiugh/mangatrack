@@ -27,6 +27,10 @@ export function AuthProvider({ children }) {
     return nextUser
   }, [])
 
+  const isAuthFailure = useCallback((error) => (
+    error?.status === 401 || error?.status === 403
+  ), [])
+
   useEffect(() => {
     const bootstrap = async () => {
       const storedToken = getStoredToken()
@@ -39,15 +43,17 @@ export function AuthProvider({ children }) {
       try {
         setToken(storedToken)
         await refreshUser()
-      } catch {
-        logout()
+      } catch (error) {
+        if (isAuthFailure(error)) {
+          logout()
+        }
       } finally {
         setIsLoading(false)
       }
     }
 
     bootstrap()
-  }, [logout, refreshUser])
+  }, [isAuthFailure, logout, refreshUser])
 
   const login = useCallback(async (credentials) => {
     const response = await authService.login(credentials)

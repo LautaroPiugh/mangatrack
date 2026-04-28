@@ -16,30 +16,30 @@ const profileService = {
     }, 'No se pudo actualizar el perfil.')
   },
 
-  async followUser(username) {
+  async followUser(userId) {
     return runRequest(async () => {
-      const response = await axiosClient.post(`/users/${username}/follow`)
+      const response = await axiosClient.post(`/users/${userId}/follow`)
       return getPayloadData(response)
     }, 'No se pudo seguir al usuario.')
   },
 
-  async unfollowUser(username) {
+  async unfollowUser(userId) {
     return runRequest(async () => {
-      const response = await axiosClient.delete(`/users/${username}/follow`)
+      const response = await axiosClient.delete(`/users/${userId}/unfollow`)
       return getPayloadData(response)
     }, 'No se pudo dejar de seguir al usuario.')
   },
 
-  async getFollowers(username) {
+  async getFollowers(userId) {
     return runRequest(async () => {
-      const response = await axiosClient.get(`/users/${username}/followers`)
+      const response = await axiosClient.get(`/users/${userId}/followers`)
       return getCollectionPayload(response)
     }, 'No se pudieron cargar los seguidores.')
   },
 
-  async getFollowing(username) {
+  async getFollowing(userId) {
     return runRequest(async () => {
-      const response = await axiosClient.get(`/users/${username}/following`)
+      const response = await axiosClient.get(`/users/${userId}/following`)
       return getCollectionPayload(response)
     }, 'No se pudieron cargar los usuarios seguidos.')
   },
