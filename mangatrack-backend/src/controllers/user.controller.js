@@ -107,6 +107,16 @@ const getPublicProfile = async (req, res) => {
   });
 };
 
+const getPublicProfileById = async (req, res) => {
+  const profile = await userProfileService.getPublicProfileById(req.params.id, req.user || null);
+
+  res.status(200).json({
+    success: true,
+    message: 'Perfil público obtenido correctamente.',
+    data: profile,
+  });
+};
+
 const updateMyProfile = async (req, res) => {
   const profile = await userProfileService.updateMyProfile(req.user.id, req.body);
 
@@ -118,7 +128,7 @@ const updateMyProfile = async (req, res) => {
 };
 
 const followUser = async (req, res) => {
-  const result = await userProfileService.followUser(req.user.id, req.params.username);
+  const result = await userProfileService.followUser(req.user.id, req.params.id);
 
   res.status(200).json({
     success: true,
@@ -128,7 +138,7 @@ const followUser = async (req, res) => {
 };
 
 const unfollowUser = async (req, res) => {
-  const result = await userProfileService.unfollowUser(req.user.id, req.params.username);
+  const result = await userProfileService.unfollowUser(req.user.id, req.params.id);
 
   res.status(200).json({
     success: true,
@@ -138,7 +148,7 @@ const unfollowUser = async (req, res) => {
 };
 
 const getFollowers = async (req, res) => {
-  const result = await userProfileService.getFollowers(req.params.username);
+  const result = await userProfileService.getFollowers(req.params.id);
 
   res.status(200).json({
     success: true,
@@ -152,7 +162,7 @@ const getFollowers = async (req, res) => {
 };
 
 const getFollowing = async (req, res) => {
-  const result = await userProfileService.getFollowing(req.params.username);
+  const result = await userProfileService.getFollowing(req.params.id);
 
   res.status(200).json({
     success: true,
@@ -168,6 +178,7 @@ const getFollowing = async (req, res) => {
 module.exports = {
   getMyProfile,
   getPublicProfile,
+  getPublicProfileById,
   updateMyProfile,
   getMyLibrary,
   getFavorites,

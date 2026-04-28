@@ -1,4 +1,5 @@
 const activityRepository = require('../repositories/activity.repository');
+const followRepository = require('../repositories/follow.repository');
 const userRepository = require('../repositories/user.repository');
 const { BadRequestError, NotFoundError } = require('../utils/errors');
 const { sanitizePublicUser } = require('../utils/user');
@@ -61,10 +62,30 @@ const recordActivitySafely = async (payload = {}) => {
   }
 };
 
-const getFeed = async (query = {}) => {
+const FEED_ACTIVITY_TYPES = [
+  'review_created',
+  'manga_favorited',
+  'manga_added_to_watchlist',
+];
+
+const getFeed = async (userId, query = {}) => {
   const { page, limit, skip } = parsePagination(query);
+  const followingIds = await followRepository.findFollowingIdsByFollower(userId);
+
+  if (followingIds.length === 0) {
+    return {
+      items: [],
+      pagination: {
+        ...buildPaginationMeta(0, page, limit),
+        followingCount: 0,
+      },
+    };
+  }
+
   const filters = {
     visibility: 'public',
+    userIds: followingIds,
+    types: FEED_ACTIVITY_TYPES,
   };
 
   const [items, total] = await Promise.all([
@@ -74,7 +95,10 @@ const getFeed = async (query = {}) => {
 
   return {
     items,
-    pagination: buildPaginationMeta(total, page, limit),
+    pagination: {
+      ...buildPaginationMeta(total, page, limit),
+      followingCount: followingIds.length,
+    },
   };
 };
 

@@ -1,4 +1,5 @@
 const activityRepository = require('../repositories/activity.repository');
+const followRepository = require('../repositories/follow.repository');
 const listRepository = require('../repositories/list.repository');
 const reviewRepository = require('../repositories/review.repository');
 const userRepository = require('../repositories/user.repository');
@@ -40,15 +41,9 @@ const getUserByUsernameOrThrow = async (username) => {
   return user;
 };
 
-const getPublicProfile = async (username, currentUser = null) => {
-  const user = await userRepository.findByUsernameWithLibrary(username, ['favorites', 'watchlist']);
-
-  if (!user) {
-    throw new NotFoundError('Usuario no encontrado.');
-  }
-
+const buildProfilePayload = async (user, currentUser = null) => {
   const isCurrentUser = currentUser?.id === user._id.toString();
-  const [stats, recentReviews, publicLists, activity, isFollowing] = await Promise.all([
+  const [stats, recentReviews, publicLists, activity, isFollowing, followersCount, followingCount] = await Promise.all([
     buildUserStats(user),
     reviewRepository.findByUserId(user._id, { isPublic: true }, {
       limit: PUBLIC_PROFILE_REVIEWS_LIMIT,
@@ -66,15 +61,20 @@ const getPublicProfile = async (username, currentUser = null) => {
       sort: { createdAt: -1 },
     }),
     currentUser?.id && !isCurrentUser
-      ? userRepository.isFollowing(currentUser.id, user._id)
+      ? followRepository.exists({
+        follower: currentUser.id,
+        following: user._id,
+      })
       : Promise.resolve(false),
+    followRepository.countDocuments({ following: user._id }),
+    followRepository.countDocuments({ follower: user._id }),
   ]);
 
   return {
     ...sanitizePublicUser(user),
     stats,
-    followersCount: user.followers?.length || 0,
-    followingCount: user.following?.length || 0,
+    followersCount,
+    followingCount,
     isFollowing,
     isCurrentUser,
     favorites: (user.favorites || []).slice(0, PUBLIC_PROFILE_FAVORITES_LIMIT),
@@ -82,6 +82,26 @@ const getPublicProfile = async (username, currentUser = null) => {
     lists: publicLists,
     activity,
   };
+};
+
+const getPublicProfile = async (username, currentUser = null) => {
+  const user = await userRepository.findByUsernameWithLibrary(username, ['favorites', 'watchlist']);
+
+  if (!user) {
+    throw new NotFoundError('Usuario no encontrado.');
+  }
+
+  return buildProfilePayload(user, currentUser);
+};
+
+const getPublicProfileById = async (userId, currentUser = null) => {
+  const user = await userRepository.findByIdWithLibrary(userId, ['favorites', 'watchlist']);
+
+  if (!user) {
+    throw new NotFoundError('Usuario no encontrado.');
+  }
+
+  return buildProfilePayload(user, currentUser);
 };
 
 const updateMyProfile = async (userId, payload = {}) => {
@@ -141,89 +161,100 @@ const updateMyProfile = async (userId, payload = {}) => {
 
 const buildFollowResponse = (user, isFollowing) => ({
   user: sanitizePublicUser(user),
-  followersCount: user.followers?.length || 0,
-  followingCount: user.following?.length || 0,
+  followersCount: 0,
+  followingCount: 0,
   isFollowing,
 });
 
-const followUser = async (userId, username) => {
+const finalizeFollowResponse = async (user, isFollowing) => ({
+  ...buildFollowResponse(user, isFollowing),
+  followersCount: await followRepository.countDocuments({ following: user._id }),
+  followingCount: await followRepository.countDocuments({ follower: user._id }),
+});
+
+const followUser = async (userId, targetUserId) => {
   const [currentUser, targetUser] = await Promise.all([
     getUserByIdOrThrow(userId),
-    getUserByUsernameOrThrow(username),
+    getUserByIdOrThrow(targetUserId),
   ]);
 
   if (currentUser._id.toString() === targetUser._id.toString()) {
     throw new BadRequestError('No puedes seguirte a ti mismo.');
   }
 
-  const alreadyFollowing = await userRepository.isFollowing(currentUser._id, targetUser._id);
+  const alreadyFollowing = await followRepository.exists({
+    follower: currentUser._id,
+    following: targetUser._id,
+  });
 
   if (!alreadyFollowing) {
-    await Promise.all([
-      userRepository.addFollowing(currentUser._id, targetUser._id),
-      userRepository.addFollower(targetUser._id, currentUser._id),
-    ]);
+    await followRepository.create({
+      follower: currentUser._id,
+      following: targetUser._id,
+    });
   }
 
-  const refreshedTarget = await getUserByUsernameOrThrow(targetUser.username);
-  return buildFollowResponse(refreshedTarget, true);
+  return finalizeFollowResponse(targetUser, true);
 };
 
-const unfollowUser = async (userId, username) => {
+const unfollowUser = async (userId, targetUserId) => {
   const [currentUser, targetUser] = await Promise.all([
     getUserByIdOrThrow(userId),
-    getUserByUsernameOrThrow(username),
+    getUserByIdOrThrow(targetUserId),
   ]);
 
   if (currentUser._id.toString() === targetUser._id.toString()) {
     throw new BadRequestError('No puedes dejar de seguirte a ti mismo.');
   }
 
-  const alreadyFollowing = await userRepository.isFollowing(currentUser._id, targetUser._id);
-
-  if (alreadyFollowing) {
-    await Promise.all([
-      userRepository.removeFollowing(currentUser._id, targetUser._id),
-      userRepository.removeFollower(targetUser._id, currentUser._id),
-    ]);
-  }
-
-  const refreshedTarget = await getUserByUsernameOrThrow(targetUser.username);
-  return buildFollowResponse(refreshedTarget, false);
-};
-
-const getFollowers = async (username) => {
-  const user = await userRepository.findByUsernameWithSocial(username, {
-    populateFollowers: true,
+  const alreadyFollowing = await followRepository.exists({
+    follower: currentUser._id,
+    following: targetUser._id,
   });
 
-  if (!user) {
-    throw new NotFoundError('Usuario no encontrado.');
+  if (alreadyFollowing) {
+    await followRepository.deleteOne({
+      follower: currentUser._id,
+      following: targetUser._id,
+    });
   }
+
+  return finalizeFollowResponse(targetUser, false);
+};
+
+const getFollowers = async (userId) => {
+  const [user, follows] = await Promise.all([
+    getUserByIdOrThrow(userId),
+    followRepository.findFollowersByUserId(userId),
+  ]);
 
   return {
     user: sanitizePublicUser(user),
-    items: (user.followers || []).map(sanitizePublicUser),
+    items: follows
+      .map((item) => item.follower)
+      .filter(Boolean)
+      .map(sanitizePublicUser),
   };
 };
 
-const getFollowing = async (username) => {
-  const user = await userRepository.findByUsernameWithSocial(username, {
-    populateFollowing: true,
-  });
-
-  if (!user) {
-    throw new NotFoundError('Usuario no encontrado.');
-  }
+const getFollowing = async (userId) => {
+  const [user, follows] = await Promise.all([
+    getUserByIdOrThrow(userId),
+    followRepository.findFollowingByUserId(userId),
+  ]);
 
   return {
     user: sanitizePublicUser(user),
-    items: (user.following || []).map(sanitizePublicUser),
+    items: follows
+      .map((item) => item.following)
+      .filter(Boolean)
+      .map(sanitizePublicUser),
   };
 };
 
 module.exports = {
   getPublicProfile,
+  getPublicProfileById,
   updateMyProfile,
   followUser,
   unfollowUser,

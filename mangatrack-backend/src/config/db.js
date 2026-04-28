@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { Activity } = require('../models/Activity');
+const Follow = require('../models/Follow');
 const Manga = require('../models/Manga');
 const MangaList = require('../models/MangaList');
 const Review = require('../models/Review');
@@ -28,6 +29,7 @@ const connectDB = async () => {
   await ensureCollectionIndexes(Review);
   await ensureCollectionIndexes(MangaList);
   await ensureCollectionIndexes(Activity);
+  await ensureCollectionIndexes(Follow);
   console.log(`MongoDB conectado: ${mongoose.connection.host}/${mongoose.connection.name}`);
 };
 

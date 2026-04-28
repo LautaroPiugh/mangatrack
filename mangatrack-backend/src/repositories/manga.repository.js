@@ -75,6 +75,26 @@ const findByNormalizedTitle = (normalizedTitle, options = {}) => {
   return query.exec();
 };
 
+const searchByTitle = async (search, options = {}) => {
+  const regex = new RegExp(escapeRegex(search.trim()), 'i');
+  const limit = Number.isInteger(options.limit) && options.limit > 0 ? options.limit : 6;
+
+  const items = await Manga.find({ title: regex })
+    .sort({ title: 1 })
+    .limit(limit)
+    .select('title slug coverUrl')
+    .lean()
+    .exec();
+
+  return items.map((item) => ({
+    id: item._id.toString(),
+    title: item.title,
+    slug: item.slug,
+    cover: item.coverUrl || null,
+    coverUrl: item.coverUrl || null,
+  }));
+};
+
 const findByExternalSourceAndId = (source, externalId, options = {}) => {
   const query = Manga.findOne({
     'external.source': source,
@@ -160,6 +180,7 @@ module.exports = {
   findBySlug,
   findByIdOrSlug,
   findByNormalizedTitle,
+  searchByTitle,
   findByExternalSourceAndId,
   findImportCandidate,
   existsById,

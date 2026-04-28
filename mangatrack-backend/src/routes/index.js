@@ -6,6 +6,7 @@ const healthRoutes = require('./health.routes');
 const { listRouter: listRoutes } = require('./list.routes');
 const mangaRoutes = require('./manga.routes');
 const reviewRoutes = require('./review.routes');
+const searchRoutes = require('./search.routes');
 const userRoutes = require('./user.routes');
 
 const router = express.Router();
@@ -16,6 +17,7 @@ router.use('/activity', activityRoutes);
 router.use('/lists', listRoutes);
 router.use('/mangas', mangaRoutes);
 router.use('/reviews', reviewRoutes);
+router.use('/search', searchRoutes);
 router.use('/users', userRoutes);
 
 module.exports = router;

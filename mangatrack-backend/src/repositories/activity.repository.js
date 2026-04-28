@@ -12,12 +12,24 @@ const buildActivityFilters = (filters = {}) => {
     query.user = filters.user;
   }
 
+  if (Array.isArray(filters.userIds)) {
+    query.user = {
+      $in: filters.userIds,
+    };
+  }
+
   if (filters.visibility) {
     query.visibility = filters.visibility;
   }
 
   if (filters.type) {
     query.type = filters.type;
+  }
+
+  if (Array.isArray(filters.types) && filters.types.length > 0) {
+    query.type = {
+      $in: filters.types,
+    };
   }
 
   return query;

@@ -143,6 +143,24 @@ const findByUsername = (username, options = {}) => {
   return query.exec();
 };
 
+const searchByUsername = async (search, options = {}) => {
+  const regex = new RegExp(escapeRegex(search.trim()), 'i');
+  const limit = Number.isInteger(options.limit) && options.limit > 0 ? options.limit : 6;
+
+  const items = await User.find({ username: regex })
+    .sort({ username: 1 })
+    .limit(limit)
+    .select('username avatar')
+    .lean()
+    .exec();
+
+  return items.map((item) => ({
+    id: item._id.toString(),
+    username: item.username,
+    avatar: item.avatar || null,
+  }));
+};
+
 const findByUsernameWithLibrary = (username, listName, options = {}) => {
   const query = User.findOne({ username: normalizeUsername(username) });
   const sensitiveProjection = buildSensitiveProjection(options);
@@ -396,6 +414,7 @@ module.exports = {
   findById,
   findByEmail,
   findByUsername,
+  searchByUsername,
   findByUsernameWithLibrary,
   findByVerificationToken,
   existsById,

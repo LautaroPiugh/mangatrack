@@ -1,11 +1,11 @@
 const activityService = require('../services/activity.service');
 
 const getFeed = async (req, res) => {
-  const result = await activityService.getFeed(req.query);
+  const result = await activityService.getFeed(req.user.id, req.query);
 
   res.status(200).json({
     success: true,
-    message: 'Actividad pública obtenida correctamente.',
+    message: 'Actividad de usuarios seguidos obtenida correctamente.',
     data: result.items,
     meta: result.pagination,
   });

@@ -18,7 +18,7 @@ const activityPaginationValidations = [
     .toInt(),
 ];
 
-router.get('/feed', activityPaginationValidations, validateRequest, activityController.getFeed);
+router.get('/feed', authMiddleware, activityPaginationValidations, validateRequest, activityController.getFeed);
 router.get('/me', authMiddleware, activityPaginationValidations, validateRequest, activityController.getMyActivity);
 
 module.exports = router;

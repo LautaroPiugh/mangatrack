@@ -50,6 +50,11 @@ const usernameValidation = [
     .matches(USERNAME_REGEX).withMessage('El username solo puede contener letras, numeros, puntos, guiones y guion bajo.'),
 ];
 
+const userIdValidation = [
+  param('id')
+    .isMongoId().withMessage('El id del usuario no es valido.'),
+];
+
 const profileUpdateValidation = [
   body()
     .custom((value, { req }) => (
@@ -104,12 +109,13 @@ const activityQueryValidation = [
     .toInt(),
 ];
 
+router.get('/:id', optionalAuthMiddleware, userIdValidation, validateRequest, userController.getPublicProfileById);
+router.get('/:id/followers', userIdValidation, validateRequest, userController.getFollowers);
+router.get('/:id/following', userIdValidation, validateRequest, userController.getFollowing);
 router.get('/:username/public', optionalAuthMiddleware, usernameValidation, validateRequest, userController.getPublicProfile);
 router.get('/:username/lists', optionalAuthMiddleware, usernameValidation, validateRequest, listController.getUserLists);
 router.get('/:username/lists/:listId', optionalAuthMiddleware, [...usernameValidation, ...listIdAliasValidation], validateRequest, listController.getUserListByUsername);
 router.get('/:username/activity', optionalAuthMiddleware, [...usernameValidation, ...activityQueryValidation], validateRequest, activityController.getUserActivity);
-router.get('/:username/followers', usernameValidation, validateRequest, userController.getFollowers);
-router.get('/:username/following', usernameValidation, validateRequest, userController.getFollowing);
 
 router.use(authMiddleware);
 
@@ -124,7 +130,7 @@ router.delete('/me/favorites/:mangaId', mangaIdValidation, validateRequest, user
 router.get('/me/watchlist', userController.getWatchlist);
 router.post('/me/watchlist/:mangaId', mangaIdValidation, validateRequest, userController.addToWatchlist);
 router.delete('/me/watchlist/:mangaId', mangaIdValidation, validateRequest, userController.removeFromWatchlist);
-router.post('/:username/follow', usernameValidation, validateRequest, userController.followUser);
-router.delete('/:username/follow', usernameValidation, validateRequest, userController.unfollowUser);
+router.post('/:id/follow', userIdValidation, validateRequest, userController.followUser);
+router.delete('/:id/unfollow', userIdValidation, validateRequest, userController.unfollowUser);
 
 module.exports = router;
