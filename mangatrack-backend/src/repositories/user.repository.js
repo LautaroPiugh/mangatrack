@@ -225,7 +225,7 @@ const updateById = (id, updateData, options = {}) => {
     id,
     updateData,
     {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     },
   );
@@ -247,7 +247,7 @@ const markAsVerified = (id) => User.findByIdAndUpdate(
     verifiedAt: new Date(),
   },
   {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   },
 ).exec();
@@ -296,7 +296,7 @@ const addToLibrary = (id, listName, mangaId, options = {}) => {
       },
     },
     {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     },
   );
@@ -318,7 +318,7 @@ const removeFromLibrary = (id, listName, mangaId, options = {}) => {
       },
     },
     {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     },
   );
@@ -339,7 +339,7 @@ const updatePreferences = (id, preferences, options = {}) => {
     id,
     { $set: normalizedPreferences },
     {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     },
   );
@@ -365,7 +365,7 @@ const addFollowing = (userId, targetUserId) => User.findByIdAndUpdate(
     },
   },
   {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   },
 ).exec();
@@ -378,7 +378,7 @@ const removeFollowing = (userId, targetUserId) => User.findByIdAndUpdate(
     },
   },
   {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   },
 ).exec();
@@ -391,7 +391,7 @@ const addFollower = (userId, followerUserId) => User.findByIdAndUpdate(
     },
   },
   {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   },
 ).exec();
@@ -404,7 +404,7 @@ const removeFollower = (userId, followerUserId) => User.findByIdAndUpdate(
     },
   },
   {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   },
 ).exec();

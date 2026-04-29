@@ -1,3 +1,4 @@
+const dns = require('node:dns');
 const nodemailer = require('nodemailer');
 const { createVerificationEmailTemplate } = require('../emails/templates/verificationEmail');
 const { createPasswordResetEmailTemplate } = require('../emails/templates/passwordResetEmail');
@@ -8,6 +9,13 @@ const EMAIL_MODE_SMTP = 'smtp';
 let transporterCache = {
   mode: null,
   transporter: null,
+};
+
+const lookupIPv4 = (hostname, options, callback) => {
+  const resolvedOptions = typeof options === 'function' ? {} : options;
+  const resolvedCallback = typeof options === 'function' ? options : callback;
+
+  return dns.lookup(hostname, { ...resolvedOptions, family: 4, all: false }, resolvedCallback);
 };
 
 const createEmailError = (message, options = {}) => {
@@ -139,6 +147,7 @@ const createTransporter = () => {
           user: smtpConfig.user,
           pass: smtpConfig.pass,
         },
+        lookup: lookupIPv4,
         connectionTimeout: 20000,
         greetingTimeout: 20000,
         socketTimeout: 30000,

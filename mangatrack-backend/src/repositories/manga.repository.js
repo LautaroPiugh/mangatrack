@@ -150,7 +150,7 @@ const updateById = (id, updateData, options = {}) => {
     id,
     updateData,
     {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     },
   );
@@ -167,7 +167,7 @@ const updateRatingSummary = (id, { averageRating, ratingsCount }) => Manga.findB
     ratingsCount,
   },
   {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   },
 ).exec();

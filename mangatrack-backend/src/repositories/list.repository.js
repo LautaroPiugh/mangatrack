@@ -98,7 +98,7 @@ const updateById = (id, payload, options = {}) => {
     id,
     payload,
     {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     },
   );
