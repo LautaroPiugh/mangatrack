@@ -11,6 +11,10 @@ const register = async (req, res, next) => {
       data.token = result.token;
     }
 
+    if (result.emailDelivery) {
+      data.emailDelivery = result.emailDelivery;
+    }
+
     return res.status(201).json({
       success: true,
       message: result.message,

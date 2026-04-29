@@ -26,7 +26,7 @@ export const authService = {
   async register(registerPayload) {
     const data = await runRequest(async () => {
       const response = await axiosClient.post('/auth/register', registerPayload, {
-        timeout: 20000,
+        timeout: 35000,
       })
       return {
         payload: getPayloadData(response),

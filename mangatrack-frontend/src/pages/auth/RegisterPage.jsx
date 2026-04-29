@@ -94,8 +94,18 @@ function RegisterPage() {
         return
       }
 
-      setSuccess(response.message || 'Revisá tu correo para verificar la cuenta.')
-      window.setTimeout(() => navigate('/login'), 1800)
+      const emailSent = response.data?.emailDelivery?.sent !== false
+
+      setSuccess(
+        response.message
+          || (emailSent
+            ? 'Revisá tu correo para verificar la cuenta.'
+            : 'La cuenta fue creada, pero el correo de verificación no pudo enviarse ahora.')
+      )
+
+      if (emailSent) {
+        window.setTimeout(() => navigate('/login'), 1800)
+      }
     } catch (registerError) {
       const nextFieldErrors = buildFieldErrors(registerError.details)
       const message = registerError.message || 'No se pudo crear la cuenta. Intentá nuevamente.'

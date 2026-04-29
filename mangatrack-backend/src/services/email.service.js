@@ -139,9 +139,9 @@ const createTransporter = () => {
           user: smtpConfig.user,
           pass: smtpConfig.pass,
         },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 15000,
+        connectionTimeout: 20000,
+        greetingTimeout: 20000,
+        socketTimeout: 30000,
       });
     })();
 

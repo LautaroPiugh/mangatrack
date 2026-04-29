@@ -64,7 +64,7 @@ const register = async ({ name, username, email, password }) => {
     isVerified: false,
     emailVerificationToken: verificationTokenHash,
     emailVerificationTokenExpiresAt: verificationExpires,
-    lastVerificationEmailSentAt: new Date(),
+    lastVerificationEmailSentAt: null,
   });
 
   try {
@@ -72,6 +72,10 @@ const register = async ({ name, username, email, password }) => {
       to: createdUser.email,
       name: createdUser.name,
       token: verificationToken,
+    });
+
+    await userRepository.updateById(createdUser._id, {
+      lastVerificationEmailSentAt: new Date(),
     });
   } catch (error) {
     console.error('[AUTH][REGISTER][EMAIL]', {
@@ -81,23 +85,23 @@ const register = async ({ name, username, email, password }) => {
       code: error.code || null,
     });
 
-    try {
-      await userRepository.deleteById(createdUser._id);
-    } catch (cleanupError) {
-      console.error('[AUTH][REGISTER][CLEANUP]', {
-        userId: createdUser._id.toString(),
-        message: cleanupError.message,
-      });
-    }
-
-    throw new InternalServerError(
-      error.publicMessage || 'No se pudo completar el registro porque fallo el envio del email de verificacion.',
-    );
+    return {
+      user: sanitizeUser(createdUser),
+      message: 'Registro exitoso, pero no pudimos enviar el correo de verificacion en este momento. Podes pedir un nuevo envio mas tarde.',
+      emailDelivery: {
+        sent: false,
+        errorCode: error.code || null,
+      },
+    };
   }
 
   return {
     user: sanitizeUser(createdUser),
     message: 'Registro exitoso. Revisá tu email para verificar la cuenta.',
+    emailDelivery: {
+      sent: true,
+      errorCode: null,
+    },
   };
 };
 
@@ -158,7 +162,6 @@ const resendVerificationEmail = async ({ email }) => {
   const updatedUser = await userRepository.updateById(user._id, {
     emailVerificationToken: verificationTokenHash,
     emailVerificationTokenExpiresAt: verificationExpires,
-    lastVerificationEmailSentAt: new Date(),
   }, {
     includeVerificationToken: true,
   });
@@ -168,6 +171,10 @@ const resendVerificationEmail = async ({ email }) => {
       to: updatedUser.email,
       name: updatedUser.name,
       token: verificationToken,
+    });
+
+    await userRepository.updateById(updatedUser._id, {
+      lastVerificationEmailSentAt: new Date(),
     });
   } catch (error) {
     console.error('[AUTH][RESEND_VERIFICATION][EMAIL]', {
