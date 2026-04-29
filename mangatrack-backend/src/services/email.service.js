@@ -1,4 +1,6 @@
 const dns = require('node:dns');
+const net = require('node:net');
+const tls = require('node:tls');
 const nodemailer = require('nodemailer');
 const { createVerificationEmailTemplate } = require('../emails/templates/verificationEmail');
 const { createPasswordResetEmailTemplate } = require('../emails/templates/passwordResetEmail');
@@ -11,11 +13,78 @@ let transporterCache = {
   transporter: null,
 };
 
-const lookupIPv4 = (hostname, options, callback) => {
-  const resolvedOptions = typeof options === 'function' ? {} : options;
-  const resolvedCallback = typeof options === 'function' ? options : callback;
+const lookupIPv4 = (hostname, callback) => dns.lookup(
+  hostname,
+  { family: 4, all: false },
+  callback,
+);
 
-  return dns.lookup(hostname, { ...resolvedOptions, family: 4, all: false }, resolvedCallback);
+const createIPv4Socket = (smtpConfig, timeouts, callback) => {
+  lookupIPv4(smtpConfig.host, (lookupError, address) => {
+    if (lookupError) {
+      callback(lookupError);
+      return;
+    }
+
+    const connectOptions = smtpConfig.secure
+      ? {
+        host: address,
+        port: smtpConfig.port,
+        servername: smtpConfig.host,
+      }
+      : {
+        host: address,
+        port: smtpConfig.port,
+      };
+
+    const socket = smtpConfig.secure
+      ? tls.connect(connectOptions)
+      : net.connect(connectOptions);
+
+    let settled = false;
+    const connectionTimeout = timeouts.connectionTimeout || 20000;
+
+    const cleanup = () => {
+      socket.removeListener('error', handleError);
+      socket.removeListener('connect', handleConnect);
+      socket.removeListener('secureConnect', handleConnect);
+      socket.removeListener('timeout', handleTimeout);
+      socket.setTimeout(0);
+    };
+
+    const finish = (error, socketOptions) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      callback(error, socketOptions);
+    };
+
+    const handleError = (error) => {
+      finish(error);
+    };
+
+    const handleTimeout = () => {
+      const timeoutError = new Error('Connection timeout');
+      timeoutError.code = 'ETIMEDOUT';
+      socket.destroy(timeoutError);
+      finish(timeoutError);
+    };
+
+    const handleConnect = () => {
+      finish(null, {
+        connection: socket,
+        secured: smtpConfig.secure,
+      });
+    };
+
+    socket.setTimeout(connectionTimeout);
+    socket.once('error', handleError);
+    socket.once('timeout', handleTimeout);
+    socket.once(smtpConfig.secure ? 'secureConnect' : 'connect', handleConnect);
+  });
 };
 
 const createEmailError = (message, options = {}) => {
@@ -147,10 +216,16 @@ const createTransporter = () => {
           user: smtpConfig.user,
           pass: smtpConfig.pass,
         },
-        lookup: lookupIPv4,
         connectionTimeout: 20000,
         greetingTimeout: 20000,
         socketTimeout: 30000,
+        getSocket: (options, callback) => createIPv4Socket(
+          smtpConfig,
+          {
+            connectionTimeout: options.connectionTimeout,
+          },
+          callback,
+        ),
       });
     })();
 
