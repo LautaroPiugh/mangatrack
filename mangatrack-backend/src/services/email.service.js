@@ -1,12 +1,15 @@
 const dns = require('node:dns');
 const net = require('node:net');
 const tls = require('node:tls');
+const fetch = require('node-fetch');
 const nodemailer = require('nodemailer');
 const { createVerificationEmailTemplate } = require('../emails/templates/verificationEmail');
 const { createPasswordResetEmailTemplate } = require('../emails/templates/passwordResetEmail');
 
 const EMAIL_MODE_JSON = 'json';
 const EMAIL_MODE_SMTP = 'smtp';
+const EMAIL_MODE_BREVO = 'brevo';
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
 let transporterCache = {
   mode: null,
@@ -113,9 +116,13 @@ const getAppName = () => process.env.APP_NAME?.trim() || 'MangaTrack';
 const getEmailMode = () => {
   const mode = (process.env.EMAIL_MODE || EMAIL_MODE_JSON).trim().toLowerCase();
 
-  if (mode !== EMAIL_MODE_JSON && mode !== EMAIL_MODE_SMTP) {
+  if (
+    mode !== EMAIL_MODE_JSON
+    && mode !== EMAIL_MODE_SMTP
+    && mode !== EMAIL_MODE_BREVO
+  ) {
     throw createEmailError(
-      'EMAIL_MODE debe ser "json" o "smtp".',
+      'EMAIL_MODE debe ser "json", "smtp" o "brevo".',
       {
         name: 'EmailConfigurationError',
         publicMessage: 'La configuracion de email es invalida.',
@@ -131,6 +138,39 @@ const getFrontendUrl = () => (
 ).replace(/\/+$/, '');
 
 const getDefaultFrom = () => `${getAppName()} <no-reply@mangatrack.local>`;
+
+const parseEmailAddress = (value) => {
+  const trimmedValue = value?.trim();
+
+  if (!trimmedValue) {
+    throw createEmailError(
+      'EMAIL_FROM debe incluir un email valido.',
+      {
+        name: 'EmailConfigurationError',
+        publicMessage: 'No se pudo enviar el email porque EMAIL_FROM es invalido.',
+      },
+    );
+  }
+
+  const mailboxMatch = trimmedValue.match(/^(?:(.+?)\s*)?<([^<>]+)>$/);
+  const email = mailboxMatch ? mailboxMatch[2].trim() : trimmedValue;
+  const name = mailboxMatch ? mailboxMatch[1].trim().replace(/^"|"$/g, '') : null;
+
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    throw createEmailError(
+      'EMAIL_FROM debe incluir un email valido.',
+      {
+        name: 'EmailConfigurationError',
+        publicMessage: 'No se pudo enviar el email porque EMAIL_FROM es invalido.',
+      },
+    );
+  }
+
+  return {
+    email,
+    name: name || null,
+  };
+};
 
 const getSmtpConfig = () => {
   const requiredEnvVars = [
@@ -186,9 +226,39 @@ const getSmtpConfig = () => {
   };
 };
 
+const getBrevoConfig = () => {
+  const requiredEnvVars = ['BREVO_API_KEY', 'EMAIL_FROM'];
+  const missingEnvVars = requiredEnvVars.filter((envVarName) => {
+    const value = process.env[envVarName];
+    return typeof value !== 'string' || value.trim().length === 0;
+  });
+
+  if (missingEnvVars.length > 0) {
+    throw createEmailError(
+      `EMAIL_MODE=brevo requiere ${missingEnvVars.join(', ')}.`,
+      {
+        name: 'EmailConfigurationError',
+        publicMessage: 'No se pudo enviar el email porque la configuracion de Brevo esta incompleta.',
+        meta: {
+          missingEnvVars,
+        },
+      },
+    );
+  }
+
+  return {
+    apiKey: process.env.BREVO_API_KEY.trim(),
+    sender: parseEmailAddress(process.env.EMAIL_FROM),
+  };
+};
+
 const getEmailFrom = (mode) => {
   if (mode === EMAIL_MODE_SMTP) {
     return getSmtpConfig().from;
+  }
+
+  if (mode === EMAIL_MODE_BREVO) {
+    return `${getBrevoConfig().sender.name || getAppName()} <${getBrevoConfig().sender.email}>`;
   }
 
   return process.env.EMAIL_FROM?.trim() || getDefaultFrom();
@@ -237,6 +307,67 @@ const createTransporter = () => {
   return transporter;
 };
 
+const logBrevoError = (error, extra = {}) => {
+  console.error('[EMAIL][BREVO][ERROR]', {
+    message: error.message,
+    code: error.code || null,
+    status: error.status || null,
+    response: error.response || null,
+    ...extra,
+  });
+};
+
+const sendBrevoEmail = async ({ to, subject, html, text }) => {
+  const brevoConfig = getBrevoConfig();
+  const response = await fetch(BREVO_API_URL, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'api-key': brevoConfig.apiKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: brevoConfig.sender,
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      textContent: text,
+    }),
+  });
+
+  const rawBody = await response.text();
+  let parsedBody = null;
+
+  try {
+    parsedBody = rawBody ? JSON.parse(rawBody) : null;
+  } catch {
+    parsedBody = rawBody || null;
+  }
+
+  if (!response.ok) {
+    const error = createEmailError(
+      'No se pudo enviar el email con Brevo.',
+      {
+        name: 'EmailDeliveryError',
+        publicMessage: 'No se pudo enviar el email. Revisa la configuracion de Brevo e intenta nuevamente.',
+        code: 'EBREVO',
+      },
+    );
+
+    error.status = response.status;
+    error.response = parsedBody;
+    throw error;
+  }
+
+  console.log('[EMAIL][BREVO][SENT]', {
+    to,
+    subject,
+    messageId: parsedBody?.messageId || null,
+  });
+
+  return parsedBody;
+};
+
 const logSmtpError = (error) => {
   const smtpContext = {
     host: process.env.EMAIL_HOST?.trim() || null,
@@ -276,6 +407,25 @@ const sendEmail = async ({ to, subject, html, text }) => {
     console.log('[EMAIL][JSON]', message);
 
     return info;
+  }
+
+  if (mode === EMAIL_MODE_BREVO) {
+    try {
+      return await sendBrevoEmail({ to, subject, html, text });
+    } catch (error) {
+      if (error.name === 'EmailConfigurationError') {
+        console.error('[EMAIL][BREVO][CONFIG]', {
+          message: error.message,
+          missingEnvVars: error.meta?.missingEnvVars || [],
+        });
+        throw error;
+      }
+
+      logBrevoError(error, {
+        from: process.env.EMAIL_FROM?.trim() || null,
+      });
+      throw error;
+    }
   }
 
   try {

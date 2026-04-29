@@ -73,29 +73,24 @@ JWT_SECRET=change_this_for_a_long_random_secret
 JWT_EXPIRES_IN=1d
 JWT_ISSUER=MangaTrack API
 JWT_AUDIENCE=MangaTrack Client
-EMAIL_MODE=json
-EMAIL_FROM=MangaTrack <no-reply@mangatrack.local>
+EMAIL_MODE=brevo
+BREVO_API_KEY=xkeysib-xxxxxxxxxxxxxxxx
+EMAIL_FROM=MangaTrack <tu_remitente_verificado@tudominio.com>
 FRONTEND_URL=http://localhost:5173
 ```
 
 Notas:
 
-- `EMAIL_MODE=json` no envía realmente correos; los imprime en consola y sirve para desarrollo.
-- Para SMTP real usa `EMAIL_MODE=smtp` junto con `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS` y `EMAIL_FROM`.
+- Para Brevo usa `EMAIL_MODE=brevo` junto con `BREVO_API_KEY` y un `EMAIL_FROM` verificado en Brevo.
 - El link de verificación apunta al frontend en `/verify-email?token=...`.
-- Si usas Gmail SMTP, no uses tu contrasena normal: crea un App Password.
 - No hardcodees ni commitees credenciales reales.
 
-Ejemplo SMTP real:
+Ejemplo Brevo:
 
 ```env
-EMAIL_MODE=smtp
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_SECURE=false
-EMAIL_USER=tu_email@gmail.com
-EMAIL_PASS=tu_app_password
-EMAIL_FROM=MangaTrack <tu_email@gmail.com>
+EMAIL_MODE=brevo
+BREVO_API_KEY=xkeysib-xxxxxxxxxxxxxxxx
+EMAIL_FROM=MangaTrack <tu_remitente_verificado@tudominio.com>
 FRONTEND_URL=http://localhost:5173
 ```
 
