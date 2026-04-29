@@ -97,8 +97,16 @@ const testTcpConnection = ({ host, port, family, timeoutMs }) => new Promise((re
 });
 
 const getSmtpDiagnostics = async (req, res) => {
-  const host = process.env.EMAIL_HOST?.trim() || 'smtp.gmail.com';
-  const port = Number.parseInt(process.env.EMAIL_PORT || '587', 10);
+  const isBrevoMode = process.env.EMAIL_MODE?.trim().toLowerCase() === 'brevo';
+  const host = isBrevoMode
+    ? process.env.BREVO_SMTP_HOST?.trim() || 'smtp-relay.brevo.com'
+    : process.env.EMAIL_HOST?.trim() || 'smtp-relay.brevo.com';
+  const port = Number.parseInt(
+    isBrevoMode
+      ? process.env.BREVO_SMTP_PORT || '2525'
+      : process.env.EMAIL_PORT || '2525',
+    10,
+  );
   const timeoutMs = 8000;
 
   const [ipv4Lookup, ipv6Lookup] = await Promise.all([

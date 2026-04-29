@@ -1,7 +1,6 @@
 const dns = require('node:dns');
 const net = require('node:net');
 const tls = require('node:tls');
-const fetch = require('node-fetch');
 const nodemailer = require('nodemailer');
 const { createVerificationEmailTemplate } = require('../emails/templates/verificationEmail');
 const { createPasswordResetEmailTemplate } = require('../emails/templates/passwordResetEmail');
@@ -9,7 +8,8 @@ const { createPasswordResetEmailTemplate } = require('../emails/templates/passwo
 const EMAIL_MODE_JSON = 'json';
 const EMAIL_MODE_SMTP = 'smtp';
 const EMAIL_MODE_BREVO = 'brevo';
-const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+const BREVO_SMTP_HOST = 'smtp-relay.brevo.com';
+const BREVO_SMTP_PORT = 2525;
 
 let transporterCache = {
   mode: null,
@@ -216,6 +216,8 @@ const getSmtpConfig = () => {
     );
   }
 
+  parseEmailAddress(process.env.EMAIL_FROM);
+
   return {
     host: process.env.EMAIL_HOST.trim(),
     port,
@@ -227,9 +229,18 @@ const getSmtpConfig = () => {
 };
 
 const getBrevoConfig = () => {
-  const requiredEnvVars = ['BREVO_API_KEY', 'EMAIL_FROM'];
+  const requiredEnvVars = [
+    'BREVO_SMTP_USER',
+    'BREVO_SMTP_KEY',
+    'EMAIL_FROM',
+  ];
   const missingEnvVars = requiredEnvVars.filter((envVarName) => {
     const value = process.env[envVarName];
+
+    if (envVarName === 'BREVO_SMTP_KEY') {
+      return typeof value !== 'string' || value.length === 0;
+    }
+
     return typeof value !== 'string' || value.trim().length === 0;
   });
 
@@ -246,9 +257,27 @@ const getBrevoConfig = () => {
     );
   }
 
+  const port = Number.parseInt(process.env.BREVO_SMTP_PORT || `${BREVO_SMTP_PORT}`, 10);
+
+  if (port !== BREVO_SMTP_PORT) {
+    throw createEmailError(
+      'BREVO_SMTP_PORT debe ser 2525 para producción en Render.',
+      {
+        name: 'EmailConfigurationError',
+        publicMessage: 'No se pudo enviar el email porque el puerto SMTP de Brevo no es valido para Render.',
+      },
+    );
+  }
+
+  parseEmailAddress(process.env.EMAIL_FROM);
+
   return {
-    apiKey: process.env.BREVO_API_KEY.trim(),
-    sender: parseEmailAddress(process.env.EMAIL_FROM),
+    host: process.env.BREVO_SMTP_HOST?.trim() || BREVO_SMTP_HOST,
+    port,
+    secure: false,
+    user: process.env.BREVO_SMTP_USER.trim(),
+    pass: process.env.BREVO_SMTP_KEY,
+    from: process.env.EMAIL_FROM.trim(),
   };
 };
 
@@ -258,7 +287,7 @@ const getEmailFrom = (mode) => {
   }
 
   if (mode === EMAIL_MODE_BREVO) {
-    return `${getBrevoConfig().sender.name || getAppName()} <${getBrevoConfig().sender.email}>`;
+    return getBrevoConfig().from;
   }
 
   return process.env.EMAIL_FROM?.trim() || getDefaultFrom();
@@ -276,7 +305,9 @@ const createTransporter = () => {
       jsonTransport: true,
     })
     : (() => {
-      const smtpConfig = getSmtpConfig();
+      const smtpConfig = mode === EMAIL_MODE_BREVO
+        ? getBrevoConfig()
+        : getSmtpConfig();
 
       return nodemailer.createTransport({
         host: smtpConfig.host,
@@ -307,73 +338,23 @@ const createTransporter = () => {
   return transporter;
 };
 
-const logBrevoError = (error, extra = {}) => {
-  console.error('[EMAIL][BREVO][ERROR]', {
-    message: error.message,
-    code: error.code || null,
-    status: error.status || null,
-    response: error.response || null,
-    ...extra,
-  });
-};
-
-const sendBrevoEmail = async ({ to, subject, html, text }) => {
-  const brevoConfig = getBrevoConfig();
-  const response = await fetch(BREVO_API_URL, {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'api-key': brevoConfig.apiKey,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      sender: brevoConfig.sender,
-      to: [{ email: to }],
-      subject,
-      htmlContent: html,
-      textContent: text,
-    }),
-  });
-
-  const rawBody = await response.text();
-  let parsedBody = null;
-
-  try {
-    parsedBody = rawBody ? JSON.parse(rawBody) : null;
-  } catch {
-    parsedBody = rawBody || null;
-  }
-
-  if (!response.ok) {
-    const error = createEmailError(
-      'No se pudo enviar el email con Brevo.',
-      {
-        name: 'EmailDeliveryError',
-        publicMessage: 'No se pudo enviar el email. Revisa la configuracion de Brevo e intenta nuevamente.',
-        code: 'EBREVO',
-      },
-    );
-
-    error.status = response.status;
-    error.response = parsedBody;
-    throw error;
-  }
-
-  console.log('[EMAIL][BREVO][SENT]', {
-    to,
-    subject,
-    messageId: parsedBody?.messageId || null,
-  });
-
-  return parsedBody;
-};
-
 const logSmtpError = (error) => {
+  const currentEmailMode = process.env.EMAIL_MODE?.trim().toLowerCase() || EMAIL_MODE_JSON;
+  const isBrevoMode = currentEmailMode === EMAIL_MODE_BREVO;
   const smtpContext = {
-    host: process.env.EMAIL_HOST?.trim() || null,
-    port: process.env.EMAIL_PORT?.trim() || null,
-    secure: process.env.EMAIL_SECURE === 'true',
-    user: process.env.EMAIL_USER?.trim() || null,
+    mode: currentEmailMode,
+    host: isBrevoMode
+      ? process.env.BREVO_SMTP_HOST?.trim() || BREVO_SMTP_HOST
+      : process.env.EMAIL_HOST?.trim() || null,
+    port: isBrevoMode
+      ? process.env.BREVO_SMTP_PORT?.trim() || `${BREVO_SMTP_PORT}`
+      : process.env.EMAIL_PORT?.trim() || null,
+    secure: isBrevoMode
+      ? false
+      : process.env.EMAIL_SECURE === 'true',
+    user: isBrevoMode
+      ? process.env.BREVO_SMTP_USER?.trim() || null
+      : process.env.EMAIL_USER?.trim() || null,
     from: process.env.EMAIL_FROM?.trim() || null,
   };
 
@@ -388,6 +369,16 @@ const logSmtpError = (error) => {
 };
 
 const sendEmail = async ({ to, subject, html, text }) => {
+  if (!to || !subject || !html) {
+    throw createEmailError(
+      'sendEmail requiere to, subject y html.',
+      {
+        name: 'EmailValidationError',
+        publicMessage: 'No se pudo enviar el email porque faltan datos requeridos.',
+      },
+    );
+  }
+
   const mode = getEmailMode();
 
   if (mode === EMAIL_MODE_JSON) {
@@ -409,25 +400,6 @@ const sendEmail = async ({ to, subject, html, text }) => {
     return info;
   }
 
-  if (mode === EMAIL_MODE_BREVO) {
-    try {
-      return await sendBrevoEmail({ to, subject, html, text });
-    } catch (error) {
-      if (error.name === 'EmailConfigurationError') {
-        console.error('[EMAIL][BREVO][CONFIG]', {
-          message: error.message,
-          missingEnvVars: error.meta?.missingEnvVars || [],
-        });
-        throw error;
-      }
-
-      logBrevoError(error, {
-        from: process.env.EMAIL_FROM?.trim() || null,
-      });
-      throw error;
-    }
-  }
-
   try {
     const transporter = createTransporter();
     const mailOptions = {
@@ -439,7 +411,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
     };
     const info = await transporter.sendMail(mailOptions);
 
-    console.log('[EMAIL][SMTP][SENT]', {
+    console.log(mode === EMAIL_MODE_BREVO ? '[EMAIL][BREVO_SMTP][SENT]' : '[EMAIL][SMTP][SENT]', {
       to,
       subject,
       messageId: info.messageId || null,
@@ -449,7 +421,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
     return info;
   } catch (error) {
     if (error.name === 'EmailConfigurationError') {
-      console.error('[EMAIL][SMTP][CONFIG]', {
+      console.error(mode === EMAIL_MODE_BREVO ? '[EMAIL][BREVO_SMTP][CONFIG]' : '[EMAIL][SMTP][CONFIG]', {
         message: error.message,
         missingEnvVars: error.meta?.missingEnvVars || [],
       });
@@ -463,7 +435,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
       {
         name: 'EmailDeliveryError',
         publicMessage: error.code === 'EAUTH'
-          ? 'No se pudo autenticar con el servidor SMTP. Revisa EMAIL_USER y EMAIL_PASS.'
+          ? 'No se pudo autenticar con el servidor SMTP. Revisa las credenciales configuradas.'
           : 'No se pudo enviar el email. Revisa la configuracion SMTP e intenta nuevamente.',
         code: error.code,
         cause: error,

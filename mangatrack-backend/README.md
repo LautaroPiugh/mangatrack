@@ -74,22 +74,31 @@ JWT_EXPIRES_IN=1d
 JWT_ISSUER=MangaTrack API
 JWT_AUDIENCE=MangaTrack Client
 EMAIL_MODE=brevo
-BREVO_API_KEY=xkeysib-xxxxxxxxxxxxxxxx
+BREVO_SMTP_HOST=smtp-relay.brevo.com
+BREVO_SMTP_PORT=2525
+BREVO_SMTP_USER=tu_usuario_smtp_brevo
+BREVO_SMTP_KEY=tu_smtp_key_brevo
 EMAIL_FROM=MangaTrack <tu_remitente_verificado@tudominio.com>
 FRONTEND_URL=http://localhost:5173
 ```
 
 Notas:
 
-- Para Brevo usa `EMAIL_MODE=brevo` junto con `BREVO_API_KEY` y un `EMAIL_FROM` verificado en Brevo.
+- Para Brevo en Render usa `EMAIL_MODE=brevo` con SMTP por `smtp-relay.brevo.com:2525`.
+- No uses puertos SMTP tradicionales `25`, `465` ni `587` en Render.
+- `BREVO_SMTP_USER` es el usuario SMTP de Brevo y `BREVO_SMTP_KEY` es la SMTP key, no la contraseña de la cuenta.
+- `EMAIL_FROM` debe ser un remitente verificado en Brevo.
 - El link de verificación apunta al frontend en `/verify-email?token=...`.
 - No hardcodees ni commitees credenciales reales.
 
-Ejemplo Brevo:
+Ejemplo Brevo SMTP para Render:
 
 ```env
 EMAIL_MODE=brevo
-BREVO_API_KEY=xkeysib-xxxxxxxxxxxxxxxx
+BREVO_SMTP_HOST=smtp-relay.brevo.com
+BREVO_SMTP_PORT=2525
+BREVO_SMTP_USER=tu_usuario_smtp_brevo
+BREVO_SMTP_KEY=tu_smtp_key_brevo
 EMAIL_FROM=MangaTrack <tu_remitente_verificado@tudominio.com>
 FRONTEND_URL=http://localhost:5173
 ```
